@@ -1,0 +1,21 @@
+{
+  "name": "tiltponggame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/main.ts",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --outdir=public",
+    "watch": "esbuild src/main.ts --bundle --outdir=public --watch"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.20.1",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3",
+    "@types/p5": "^1.7.6"
+  },
+  "dependencies": {
+    "p5": "^1.9.1"
+  }
+}
