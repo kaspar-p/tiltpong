@@ -1,0 +1,14 @@
+{
+    "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
+    "build": {
+        "builder": "MbedLibBuilder"
+    },
+    "frameworks": "mbed",
+    "name": "BSP_B-L475E-IOT01",
+    "platforms": "*",
+    "repository": {
+        "type": "hg",
+        "url": "https://os.mbed.com/teams/ST/code/BSP_B-L475E-IOT01/"
+    },
+    "version": "7.0+bfe8272ced90"
+}
