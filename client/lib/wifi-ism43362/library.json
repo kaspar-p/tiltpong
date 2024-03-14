@@ -1,0 +1,14 @@
+{
+    "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
+    "build": {
+        "builder": "MbedLibBuilder"
+    },
+    "frameworks": "mbed",
+    "name": "wifi-ism43362",
+    "platforms": "*",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ARMmbed/wifi-ism43362"
+    },
+    "version": "v0.0.0"
+}
