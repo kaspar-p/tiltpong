@@ -6,8 +6,7 @@ libcoap/.libs/libcoap-3-gnutls.a:
 	cd libcoap && \
 	./autogen.sh && \
 	./configure --disable-doxygen --disable-manpages && \
-	$(MAKE) && \
-	$(MAKE) install
+	$(MAKE)
 
 clean:
 	cd libcoap && make clean;
