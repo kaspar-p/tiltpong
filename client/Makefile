@@ -16,4 +16,5 @@ uploadfd:
 update:
 	pio run --target update
 
-
+monitor:
+	pio device monitor
