@@ -10,7 +10,7 @@ clean:
 	rm -rf main.o main
 
 main: main.o
-	${CC} -lgnutls ${LIBS}/libcoap-3-gnutls.a $^ -o $@
+	${CC} -lgnutls -I${HEADERS} ${LIBS}/libcoap-3-gnutls.a $^ -o $@
 
 main.o: main.c
 	${CC} -I${HEADERS} ${FLAGS} -c $^ -o $@
