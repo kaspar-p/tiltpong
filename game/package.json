@@ -1,13 +1,14 @@
 {
-  "name": "tiltponggame",
+  "name": "@tiltpong/game",
   "version": "1.0.0",
-  "description": "",
+  "author": "Kaspar Poland, Hisbaan Noorani, Mac Niu",
+  "description": "A pong implementation, played with microcontrollers",
   "main": "src/main.ts",
   "scripts": {
+    "clean": "rm -rf node_modules/ public/main.js",
     "build": "esbuild src/main.ts --bundle --outdir=public",
     "watch": "esbuild src/main.ts --bundle --outdir=public --watch"
   },
-  "author": "",
   "license": "ISC",
   "devDependencies": {
     "esbuild": "^0.20.1",

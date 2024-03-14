@@ -8,3 +8,8 @@ libcoap/.libs/libcoap-3-gnutls.a:
 	./configure --disable-doxygen --disable-manpages && \
 	$(MAKE) && \
 	$(MAKE) install
+
+clean:
+	cd libcoap && make clean;
+
+.PHONY: all clean libcoap

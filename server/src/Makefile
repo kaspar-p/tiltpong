@@ -1,7 +1,8 @@
 CC = gcc
 FLAGS = -Wall -Wpedantic
 
-LIBS = ../third_party/libcoap/.libs
+HEADERS = ../third_party/libcoap/include
+LIBS = ../third_party/libcoap/.libs 
 
 all: main
 
@@ -12,4 +13,4 @@ main: main.o
 	${CC} -L${LIBS} -lcoap-3-gnutls $^ -o $@
 
 main.o: main.c
-	${CC} ${FLAGS} -c $^ -o $@
+	${CC} -I${HEADERS} ${FLAGS} -c $^ -o $@
