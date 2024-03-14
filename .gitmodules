@@ -2,3 +2,6 @@
   path = "server/third_party/libcoap"
 	url = https://github.com/obgm/libcoap
 	active = true
+[submodule "server/third_party/libwebsockets"]
+	path = server/third_party/libwebsockets
+	url = https://github.com/warmcat/libwebsockets
