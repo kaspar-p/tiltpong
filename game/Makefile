@@ -1,9 +1,9 @@
 all: node_modules public/main.js
 
-node_modules:
+node_modules: src/main.ts package.json
 	npm install
 
-public/main.js:
+public/main.js: src/main.ts
 	npm ci && npm run build
 
 clean:
