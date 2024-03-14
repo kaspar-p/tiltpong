@@ -9,9 +9,9 @@ libcoap/.libs/libcoap-3-gnutls.a:
 	$(MAKE) -j8 && \
 	sudo $(MAKE) install
 
-libwebsockets: libwebsockets/lib/libwebsockets.a
+libwebsockets: libwebsockets/build/lib/libwebsockets.a
 
-libwebsockets/lib/libwebsockets.a:
+libwebsockets/build/lib/libwebsockets.a:
 		cd libwebsockets && \
 		cmake -S . -B build -DDISABLE_WERROR=ON && \
 		cd build && \
