@@ -1,7 +1,62 @@
 {
+    "config": {
+	    "wifi-country-code": {
+            "help": "Country Code to specify channel number",
+            "value": "CA"
+        },
+        "wifi-miso": {
+            "help": "SPI-MISO connection to external device",
+            "value": "NC"
+        },
+        "wifi-mosi": {
+            "help": "SPI-MOSI connection to external device",
+            "value": "NC"
+        },
+        "wifi-sclk": {
+            "help": "SPI-CLOCK connection to external device",
+            "value": "NC"
+        },
+        "wifi-nss": {
+            "help": "SPI chip select of external device",
+            "value": "NC"
+        },
+        "wifi-reset": {
+            "help": "ISM43362 reset",
+            "value": "NC"
+        },
+        "wifi-dataready": {
+            "help": "ISM43362 dataready",
+            "value": "NC"
+        },
+        "wifi-wakeup": {
+            "help": "ISM43362 wakeup",
+            "value": "NC"
+        },
+        "wifi-debug": {
+            "help": "Defines whether logging is on or off",
+            "value": false
+        },
+        "provide-default": {
+            "help": "Provide default WifiInterface. [true/false]",
+            "value": true
+        },
+        "read-thread-stack-size": {
+            "help": "Stack size of the read thread, defaults to MBED_CONF_APP_THREAD_STACK_SIZE or MBED_CONF_RTOS_THREAD_STACK_SIZE (default: 4096)",
+            "value": null
+        },
+        "read-thread-stack-statically-allocated": {
+            "help": "Whether to statically allocate the memory for the read thread stack. Requires 'read-thread-stack-size' to be set.",
+            "value": false
+        }
+    },
     "target_overrides": {
-        "*": {
-            "target.printf_lib": "std"
+        "DISCO_L475VG_IOT01A": {
+            "target.printf_lib": "std",
+            "platform.stdio-convert-newlines": true,
+            "nsapi.default-wifi-ssid": "\"Noorani\"",
+            "nsapi.default-wifi-password": "\"billykabacha\"",
+            "nsapi.default-wifi-security": "WPA2",
+            "platform.stdio-baud-rate": 115200
         }
     }
 }
