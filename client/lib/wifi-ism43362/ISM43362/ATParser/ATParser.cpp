@@ -36,21 +36,8 @@
 #endif
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
-// activate / de-activate debug
-#define dbg_on           0
-#define AT_DATA_PRINT    0
-#define AT_COMMAND_PRINT 0
-#define AT_HEXA_DATA     0
-
-ATParser::ATParser(BufferedSpi &serial_spi, const char *delimiter, int buffer_size, int timeout) :
-    _serial_spi(&serial_spi),
-    _buffer_size(buffer_size), _in_prev(0), _oobs(NULL)
-{
-    _buffer = new char[buffer_size];
-    setTimeout(timeout);
-    setDelimiter(delimiter);
-}
-
+#define dbg_on 0
+//#define TRACE_AT_DATA 1
 
 // getc/putc handling with timeouts
 int ATParser::putc(char c)
@@ -77,21 +64,15 @@ int ATParser::write(const char *data, int size_of_data, int size_in_buff)
 {
     int i = 0;
     _bufferMutex.lock();
-    debug_if(dbg_on, "ATParser write: %d BYTES\r\n", size_of_data);
-    debug_if(AT_DATA_PRINT, "ATParser write: (ASCII) ");
-    for (; i < size_of_data; i++) {
-        debug_if(AT_DATA_PRINT, "%c", data[i]);
+    for ( ; i < size_of_data; i++) {
         if (putc(data[i]) < 0) {
-            debug_if(AT_DATA_PRINT, "\r\n");
             _bufferMutex.unlock();
             return -1;
         }
     }
-    debug_if(AT_DATA_PRINT, "\r\n");
 
     _serial_spi->buffsend(size_of_data + size_in_buff);
     _bufferMutex.unlock();
-
     return (size_of_data + size_in_buff);
 }
 
@@ -103,45 +84,36 @@ int ATParser::read(char *data)
     _bufferMutex.lock();
 
     //this->flush();
-    if (!_serial_spi->readable()) {
+    if(!_serial_spi->readable()) {
         readsize = _serial_spi->read();
     } else {
-        debug_if(dbg_on, "Pending data when reading from WIFI\r\n");
-        _bufferMutex.unlock();
+        error("Pending data when reading from WIFI\r\n");
         return -1;
     }
 
-    debug_if(dbg_on, "ATParser read: %d data avail in SPI\r\n", readsize);
+    debug_if(dbg_on, "Avail in SPI %d\r\n", readsize);
 
-    if (readsize < 0) {
+    if ( readsize < 0) {
         _bufferMutex.unlock();
         return -1;
     }
 
     for (i = 0 ; i < readsize; i++) {
-        int c = getc();
-        if (c < 0) {
-            _bufferMutex.unlock();
-            return -1;
-        }
-        data[i] = c;
+       int c = getc();
+       if (c < 0) {
+           _bufferMutex.unlock();
+           return -1;
+       }
+       data[i] = c;
     }
 
-#if AT_HEXA_DATA
-    debug_if(AT_DATA_PRINT, "ATParser read: (HEXA) ");
+#if TRACE_AT_DATA
+    debug_if(dbg_on, "AT<< %d BYTES\r\n", readsize);
     for (i = 0; i < readsize; i++) {
-        debug_if(AT_DATA_PRINT, "%2X ", data[i]);
-        if ((i + 1) % 20 == 0) {
-            debug_if(AT_DATA_PRINT, "\r\n");
-        }
+         debug_if(dbg_on, "%2X ", data[i]);
     }
-    debug_if(AT_DATA_PRINT, "\r\n");
+    debug_if(dbg_on, "\r\n");
 #endif
-    debug_if(AT_DATA_PRINT, "ATParser read: (ASCII) ");
-    for (i = 0; i < readsize; i++) {
-        debug_if(AT_DATA_PRINT, "%c", data[i]);
-    }
-    debug_if(AT_DATA_PRINT, "\r\n");
 
     _bufferMutex.unlock();
 
@@ -158,7 +130,7 @@ int ATParser::vprintf(const char *format, va_list args)
     }
 
     int i = 0;
-    for (; _buffer[i]; i++) {
+    for ( ; _buffer[i]; i++) {
         if (putc(_buffer[i]) < 0) {
             _bufferMutex.unlock();
             return -1;
@@ -181,7 +153,7 @@ int ATParser::vscanf(const char *format, va_list args)
     _bufferMutex.lock();
 
     while (format[i]) {
-        if (format[i] == '%' && format[i + 1] != '%' && format[i + 1] != '*') {
+        if (format[i] == '%' && format[i+1] != '%' && format[i+1] != '*') {
             _buffer[offset++] = '%';
             _buffer[offset++] = '*';
             i++;
@@ -208,7 +180,7 @@ int ATParser::vscanf(const char *format, va_list args)
 
     while (true) {
         // Ran out of space
-        if (j + 1 >= _buffer_size - offset) {
+        if (j+1 >= _buffer_size - offset) {
             _bufferMutex.unlock();
             return false;
         }
@@ -223,12 +195,12 @@ int ATParser::vscanf(const char *format, va_list args)
 
         // Check for match
         int count = -1;
-        sscanf(_buffer + offset, _buffer, &count);
+        sscanf(_buffer+offset, _buffer, &count);
 
         // We only succeed if all characters in the response are matched
         if (count == j) {
             // Store the found results
-            vsscanf(_buffer + offset, format, args);
+            vsscanf(_buffer+offset, format, args);
             _bufferMutex.unlock();
             return j;
         }
@@ -239,7 +211,7 @@ int ATParser::vscanf(const char *format, va_list args)
 // Command parsing with line handling
 bool ATParser::vsend(const char *command, va_list args)
 {
-    int i = 0, j = 0;
+    int i=0, j=0;
     _bufferMutex.lock();
     // Create and send command
     if (vsprintf(_buffer, command, args) < 0) {
@@ -250,14 +222,14 @@ bool ATParser::vsend(const char *command, va_list args)
     for (i = 0; _buffer[i]; i++) {
     }
 
-    for (j = 0; _delimiter[j]; j++) {
-        _buffer[i + j] = _delimiter[j];
+    for (j=0; _delimiter[j]; j++) {
+        _buffer[i+j] = _delimiter[j];
     }
-    _buffer[i + j] = 0; // only to get a clean debug log
+    _buffer[i+j]=0; // only to get a clean debug log
+    
+    bool ret = !(_serial_spi->buffwrite(_buffer, i+j) < 0);
 
-    bool ret = !(_serial_spi->buffwrite(_buffer, i + j) < 0);
-
-    debug_if(AT_COMMAND_PRINT, "AT> %s\n", _buffer);
+    debug_if(dbg_on, "AT> %s\n", _buffer);
     _bufferMutex.unlock();
     return ret;
 }
@@ -265,18 +237,16 @@ bool ATParser::vsend(const char *command, va_list args)
 bool ATParser::vrecv(const char *response, va_list args)
 {
     _bufferMutex.lock();
-
-    if (!_serial_spi->readable()) {
-        // debug_if(dbg_on, "NO DATA, read again\r\n");
+    /* Read from the wifi module, fill _rxbuffer */
+    //this->flush();
+    if(!_serial_spi->readable()) {
+         debug_if(dbg_on, "NO DATA, read again\r\n");
         if (_serial_spi->read() < 0) {
-            _bufferMutex.unlock();
             return false;
         }
+    } else {
+         debug_if(dbg_on, "Pending data\r\n");
     }
-    // else {
-    //      debug_if(dbg_on, "Pending data\r\n");
-    // }
-
 restart:
     _aborted = false;
     // Iterate through each line in the expected response
@@ -290,14 +260,14 @@ restart:
         bool whole_line_wanted = false;
 
         while (response[i]) {
-            if (response[i] == '%' && response[i + 1] != '%' && response[i + 1] != '*') {
+            if (response[i] == '%' && response[i+1] != '%' && response[i+1] != '*') {
                 _buffer[offset++] = '%';
                 _buffer[offset++] = '*';
                 i++;
             } else {
                 _buffer[offset++] = response[i++];
                 // Find linebreaks, taking care not to be fooled if they're in a %[^\n] conversion specification
-                if (response[i - 1] == '\n' && !(i >= 3 && response[i - 3] == '[' && response[i - 2] == '^')) {
+                if (response[i - 1] == '\n' && !(i >= 3 && response[i-3] == '[' && response[i-2] == '^')) {
                     whole_line_wanted = true;
                     break;
                 }
@@ -311,7 +281,7 @@ restart:
         _buffer[offset++] = 'n';
         _buffer[offset++] = 0;
 
-        // debug_if(dbg_on, "ATParser vrecv: AT? ====%s====\n", _buffer);
+        debug_if(dbg_on, "AT? ====%s====\n", _buffer);
         // To workaround scanf's lack of error reporting, we actually
         // make two passes. One checks the validity with the modified
         // format string that only stores the matched characters (%n).
@@ -330,15 +300,16 @@ restart:
                 return false;
             }
 
-            // debug_if(AT_DATA_PRINT, "%2X ", c);
-
+#if TRACE_AT_DATA
+             debug_if(dbg_on, "%2X ", c);
+#endif
             _buffer[offset + j++] = c;
             _buffer[offset + j] = 0;
 
             // Check for oob data
             for (struct oob *oob = _oobs; oob; oob = oob->next) {
                 if ((unsigned)j == oob->len && memcmp(
-                            oob->prefix, _buffer + offset, oob->len) == 0) {
+                        oob->prefix, _buffer+offset, oob->len) == 0) {
                     debug_if(dbg_on, "AT! %s\n", oob->prefix);
                     oob->cb();
 
@@ -355,25 +326,23 @@ restart:
 
             // Check for match
             int count = -1;
-            if (whole_line_wanted && c != '\n' &&  c != '\r') {
+            if (whole_line_wanted && c != '\n' && c != ' ') {
                 // Don't attempt scanning until we get delimiter if they included it in format
                 // This allows recv("Foo: %s\n") to work, and not match with just the first character of a string
                 // (scanf does not itself match whitespace in its format string, so \n is not significant to it)
-                // New ATCommand F0=2 ends with \r only whereas other commands end with \r\n ,
-                // so take both characters \r and \n into account to determine the end of line
             } else {
-                sscanf(_buffer + offset, _buffer, &count);
+                sscanf(_buffer+offset, _buffer, &count);
             }
 
             // We only succeed if all characters in the response are matched
             if (count == j) {
-                debug_if(AT_COMMAND_PRINT, "AT= ====%s====\n", _buffer + offset);
+                debug_if(dbg_on, "AT= ====%s====\n", _buffer + offset);
                 // Reuse the front end of the buffer
                 memcpy(_buffer, response, i);
                 _buffer[i] = 0;
 
                 // Store the found results
-                vsscanf(_buffer + offset, _buffer, args);
+                vsscanf(_buffer+offset, _buffer, args);
 
                 // Jump to next line and continue parsing
                 response += i;
@@ -382,13 +351,13 @@ restart:
 
             // Clear the buffer when we hit a newline or ran out of space
             // running out of space usually means we ran into binary data
-            if ((c == '\n') || (c == '\r')) {
-                debug_if(dbg_on, "New line AT<<< %s", _buffer + offset);
+            if ((c == '\n') ) {
+                debug_if(dbg_on, "New line AT<<< %s", _buffer+offset);
                 j = 0;
             }
             if ((j + 1 >= (_buffer_size - offset))) {
 
-                debug_if(dbg_on, "Out of space AT<<< %s, j=%d", _buffer + offset, j);
+                debug_if(dbg_on, "Out of space AT<<< %s, j=%d", _buffer+offset, j);
                 j = 0;
             }
         }

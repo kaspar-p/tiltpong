@@ -1,14 +1,19 @@
 {
-    "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
+    "authors": {
+        "name": "Farnell-Element14 Bologna IOT Team",
+        "url": "https://os.mbed.com/teams/Farnell24-IOT-Team/"
+    },
     "build": {
         "builder": "MbedLibBuilder"
     },
+    "description": "versione corretta",
     "frameworks": "mbed",
+    "keywords": [],
     "name": "wifi-ism43362",
     "platforms": "*",
     "repository": {
-        "type": "git",
-        "url": "https://github.com/ARMmbed/wifi-ism43362"
+        "type": "hg",
+        "url": "https://os.mbed.com/teams/Farnell24-IOT-Team/code/wifi-ism43362/"
     },
-    "version": "v0.0.0"
+    "version": "0.0.0+sha.766454e296c3"
 }

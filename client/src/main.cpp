@@ -9,10 +9,8 @@ bool button_pressed = false;
 
 void get_sensor_data() {
   if (button_pressed) {
-    // double phi = get_tilt();
-    // printf("[PHI] %f\n", phi);
-
     std::array<double, 3> position = get_new_position();
+    coap_send(position);
 
     button_pressed = false;
   }
@@ -26,6 +24,8 @@ void button_fall_handler() {
 
 int main() {
   printf("START\n");
+
+  coap_init();
 
   accelerometer_init();
   gyro_init();

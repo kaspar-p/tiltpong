@@ -23,7 +23,7 @@
 
 #ifndef BUFFEREDSPI_H
 #define BUFFEREDSPI_H
-
+ 
 #include "mbed.h"
 #include "MyBuffer.h"
 
@@ -40,22 +40,22 @@
  *  BufferedSerial pc(USBTX, USBRX);
  *
  *  int main()
- *  {
+ *  { 
  *      while(1)
  *      {
  *          Timer s;
- *
+ *        
  *          s.start();
  *          pc.printf("Hello World - buffered\n");
  *          int buffered_time = s.read_us();
  *          wait(0.1f); // give time for the buffer to empty
- *
+ *        
  *          s.reset();
  *          printf("Hello World - blocking\n");
  *          int polled_time = s.read_us();
  *          s.stop();
  *          wait(0.1f); // give time for the buffer to empty
- *
+ *        
  *          pc.printf("printf buffered took %d us\n", buffered_time);
  *          pc.printf("printf blocking took %d us\n", polled_time);
  *          wait(0.5f);
@@ -67,8 +67,9 @@
 /**
  *  @class BufferedSpi
  *  @brief Software buffers and interrupt driven tx and rx for Serial
- */
-class BufferedSpi : public SPI {
+ */  
+class BufferedSpi : public SPI 
+{
 private:
     DigitalOut    nss;
     MyBuffer <char> _txbuf;
@@ -78,7 +79,7 @@ private:
     void txIrq(void);
     void prime(void);
 
-    InterruptIn *_datareadyInt;
+    InterruptIn* _datareadyInt;
     volatile int _cmddata_rdy_rising_event;
     void DatareadyRising(void);
     int wait_cmddata_rdy_rising_event(void);
@@ -110,62 +111,62 @@ public:
      *  @param tx_multiple amount of max printf() present in the internal ring buffer at one time
      *  @param name optional name
     */
-    BufferedSpi(PinName mosi, PinName miso, PinName sclk, PinName nss, PinName datareadypin, uint32_t buf_size = 2500, uint32_t tx_multiple = 1, const char *name = NULL);
-
+    BufferedSpi(PinName mosi, PinName miso, PinName sclk, PinName nss, PinName datareadypin, uint32_t buf_size = 1480, uint32_t tx_multiple = 4,const char* name=NULL);
+    
     /** Destroy a BufferedSpi Port
      */
     virtual ~BufferedSpi(void);
-
+    
     /** call to SPI frequency Function
      */
     virtual void frequency(int hz);
-
+    
     /** clear the transmit buffer
      */
     virtual void flush_txbuf(void);
-
-    /** call to SPI format function
+    
+    /** call to SPI format function 
      */
     virtual void format(int bits, int mode);
-
+    
     virtual void enable_nss(void);
-
+    
     virtual void disable_nss(void);
-
+    
     /** Check on how many bytes are in the rx buffer
      *  @return 1 if something exists, 0 otherwise
      */
     virtual int readable(void);
-
+    
     /** Check to see if the tx buffer has room
      *  @return 1 always has room and can overwrite previous content if too small / slow
      */
     virtual int writeable(void);
-
+    
     /** Get a single byte from the BufferedSpi Port.
      *  Should check readable() before calling this.
      *  @return A byte that came in on the SPI Port
      */
     virtual int getc(void);
-
+    
     /** Write a single byte to the BufferedSpi Port.
      *  @param c The byte to write to the SPI Port
      *  @return The byte that was written to the SPI Port Buffer
      */
     virtual int putc(int c);
-
+    
     /** Write a string to the BufferedSpi Port. Must be NULL terminated
      *  @param s The string to write to the Spi Port
      *  @return The number of bytes written to the Spi Port Buffer
      */
     virtual int puts(const char *s);
-
+    
     /** Write a formatted string to the BufferedSpi Port.
      *  @param format The string + format specifiers to write to the Spi Port
      *  @return The number of bytes written to the Spi Port Buffer
      */
-    virtual int printf(const char *format, ...);
-
+    virtual int printf(const char* format, ...);
+    
     /** Write data to the Buffered Spi Port
      *  @param s A pointer to data to send
      *  @param length The amount of data being pointed to
@@ -190,33 +191,34 @@ public:
     /**
     * Allows timeout to be changed between commands
     *
-    * @param timeout timeout of the connection in ms
+    * @param timeout timeout of the connection
     */
     void setTimeout(int timeout)
     {
-        /*  this is a safe guard timeout at SPI level in case module is stuck */
-        _timeout = timeout;
+        /*  this is a safe guard timeout in case module is stuck
+         *  so take 5 sec margin compared to module timeout, to
+         *  really only detect case where module is stuck */
+        _timeout = timeout + 5000;
     }
 
     /** Register a callback once any data is ready for sockets
      *  @param func     Function to call on state change
      */
     virtual void sigio(Callback<void()> func);
-
+    
     /** Attach a function to call whenever a serial interrupt is generated
      *  @param func A pointer to a void function, or 0 to set as none
      *  @param type Which serial interrupt to attach the member function to (Serial::RxIrq for receive, TxIrq for transmit buffer empty)
      */
-    virtual void attach(Callback<void()> func, IrqType type = RxIrq);
-
+     virtual void attach(Callback<void()> func, IrqType type=RxIrq);
+     
     /** Attach a member function to call whenever a serial interrupt is generated
      *  @param obj pointer to the object to call the member function on
      *  @param method pointer to the member function to call
      *  @param type Which serial interrupt to attach the member function to (Serial::RxIrq for receive, TxIrq for transmit buffer empty)
      */
     template <typename T>
-    void attach(T *obj, void (T::*method)(), IrqType type = RxIrq)
-    {
+    void attach(T *obj, void (T::*method)(), IrqType type=RxIrq) {
         attach(Callback<void()>(obj, method), type);
     }
 
@@ -226,8 +228,7 @@ public:
      *  @param type Which serial interrupt to attach the member function to (Serial::RxIrq for receive, TxIrq for transmit buffer empty)
      */
     template <typename T>
-    void attach(T *obj, void (*method)(T *), IrqType type = RxIrq)
-    {
+    void attach(T *obj, void (*method)(T*), IrqType type=RxIrq) {
         attach(Callback<void()>(obj, method), type);
     }
 };

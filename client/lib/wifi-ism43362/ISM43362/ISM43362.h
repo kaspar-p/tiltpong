@@ -28,35 +28,26 @@
 #define ES_WIFI_RTOS_REV_SIZE                       16
 
 // The input range for AT Command 'R1' is 0 to 1200 bytes
-// 'R1' Set Read Transport Packet Size (bytes)
+// ‘R1’ Set Read Transport Packet Size (bytes)
 #define ES_WIFI_MAX_RX_PACKET_SIZE                     1200
 // Module maxume DATA payload for Tx packet is 1460
 #define ES_WIFI_MAX_TX_PACKET_SIZE                     1460
-typedef enum ism_security {
-    ISM_SECURITY_NONE         = 0x0,      /*!< open access point */
-    ISM_SECURITY_WEP          = 0x1,      /*!< phrase conforms to WEP */
-    ISM_SECURITY_WPA          = 0x2,      /*!< phrase conforms to WPA */
-    ISM_SECURITY_WPA2         = 0x3,      /*!< phrase conforms to WPA2 */
-    ISM_SECURITY_WPA_WPA2     = 0x4,      /*!< phrase conforms to WPA/WPA2 */
-    ISM_SECURITY_UNKNOWN      = 0xFF,     /*!< unknown/unsupported security in scan results */
-} ism_security_t;
-
-extern "C" int32_t ParseNumber(char *ptr, uint8_t *cnt);
 
 /** ISM43362Interface class.
     This is an interface to a ISM43362 radio.
  */
-class ISM43362 {
+class ISM43362
+{
 public:
-    ISM43362(PinName mosi, PinName miso, PinName clk, PinName nss, PinName resetpin, PinName datareadypin, PinName wakeup, bool debug = false);
-
+    ISM43362(PinName mosi, PinName miso, PinName clk, PinName nss, PinName resetpin, PinName datareadypin, PinName wakeup, bool debug=false);
+    
     /**
     * Check firmware version of ISM43362
     *
-    * @return fw version or null if no version is read
+    * @return null-terminated fw version or null if no version is read
     */
-    uint32_t get_firmware_version(void);
-
+    const char *get_firmware_version(void);
+    
     /**
     * Reset ISM43362
     *
@@ -77,10 +68,9 @@ public:
     *
     * @param ap the name of the AP
     * @param passPhrase the password of AP
-    * @param ap_sec the security level of network AP
-    * @return nsapi_error enum
+    * @return true only if ISM43362 is connected successfully
     */
-    int connect(const char *ap, const char *passPhrase, ism_security_t ap_sec);
+    bool connect(const char *ap, const char *passPhrase);
 
     /**
     * Disconnect ISM43362 from AP
@@ -103,16 +93,16 @@ public:
     */
     const char *getMACAddress(void);
 
-    /** Get the local gateway
-    *
-    *  @return         Null-terminated representation of the local gateway
-    *                  or null if no network mask has been recieved
-    */
+     /** Get the local gateway
+     *
+     *  @return         Null-terminated representation of the local gateway
+     *                  or null if no network mask has been recieved
+     */
     const char *getGateway();
 
     /** Get the local network mask
      *
-     *  @return         Null-terminated representation of the local network mask
+     *  @return         Null-terminated representation of the local network mask 
      *                  or null if no network mask has been recieved
      */
     const char *getNetmask();
@@ -132,12 +122,20 @@ public:
 
     /** Scan for available networks
      *
-     * @param  ap    Pointer to allocated array to store discovered AP, or 0 to only count available AP
+     * @param  ap    Pointer to allocated array to store discovered AP
      * @param  limit Size of allocated @a res array, or 0 to only count available AP
      * @return       Number of entries in @a res, or if @a count was 0 number of available networks, negative on error
      *               see @a nsapi_error
      */
     int scan(WiFiAccessPoint *res, unsigned limit);
+    
+    /**Perform a dns query
+    *
+    * @param name Hostname to resolve
+    * @param ip   Buffer to store IP address
+    * @return 0 true on success, false on failure
+    */
+    bool dns_lookup(const char *name, char *ip);
 
     /**
     * Open a socketed connection
@@ -146,13 +144,9 @@ public:
     * @param id id to give the new socket, valid 0-4
     * @param port port to open connection with
     * @param addr the IP address of the destination
-    * @return
-    * @   NSAPI_ERROR_OK : socket opened successfully
-    * @   NSAPI_ERROR_PARAMETER : invalid configuration
-    * @   NSAPI_ERROR_DEVICE_ERROR :
-    * @   failure interfacing with the network processor
+    * @return true only if socket opened successfully
     */
-    int open(const char *type, int id, const char *addr, int port);
+    bool open(const char *type, int id, const char* addr, int port);
 
     /**
     * Sends data to an open socket
@@ -183,6 +177,13 @@ public:
     bool close(int id);
 
     /**
+    * Allows timeout to be changed between commands
+    *
+    * @param timeout_ms timeout of the connection
+    */
+    void setTimeout(uint32_t timeout_ms);
+
+    /**
     * Checks if data is available
     */
     bool readable();
@@ -207,7 +208,7 @@ public:
     * @return amount of read value, or -1 for errors
     */
     int check_recv_status(int id, void *data);
-
+    
     /**
     * Attach a function to call whenever network state has changed
     *
@@ -215,78 +216,31 @@ public:
     * @param method pointer to the member function to call
     */
     template <typename T, typename M>
-    void attach(T *obj, M method)
-    {
+    void attach(T *obj, M method) {
         attach(Callback<void()>(obj, method));
     }
-
-    /** Get the connection status
-     *
-     *  @return         The connection status according to ConnectionStatusType
-     */
-    nsapi_connection_status_t connection_status() const;
-
 
 private:
     BufferedSpi _bufferspi;
     ATParser _parser;
     DigitalOut _resetpin;
+    volatile int _timeout;
     volatile int _active_id;
     void print_rx_buff(void);
     bool check_response(void);
-
-#ifdef MBED_CONF_ISM43362_WIFI_COUNTRY_CODE
-    bool check_country_code(const char *country_code);
-    char WIFI_module_country_code[5];
-#endif
-
     struct packet {
         struct packet *next;
         int id;
         uint32_t len;
         // data follows
-    } *_packets, * *_packets_end;
+    } *_packets, **_packets_end;
     void _packet_handler();
-    bool _ism_debug;
 
     char _ip_buffer[16];
     char _gateway_buffer[16];
     char _netmask_buffer[16];
     char _mac_buffer[18];
-    uint32_t _FwVersionId;
-
-    // Connection state reporting
-    nsapi_connection_status_t _conn_status;
-    mbed::Callback<void()> _conn_stat_cb;
-
-    typedef struct {
-        char cc[3];
-    } COUNTRY_CODE;
-
-    COUNTRY_CODE CountryCodeElevenChannels[12] = {"AS", "CA", "FM", "GU", "KY", "MP", "PR", "TW",
-                                                  "UM", "US", "VI", "ED"
-                                                 };
-
-    COUNTRY_CODE CountryCodeThirteenChannels[127] = {"AE", "AG", "AN", "AR", "AT", "AU", "AW",
-                                                     "AZ", "BA", "BB", "BD", "BE", "BG", "BH",
-                                                     "BM", "BN", "BO", "BR", "BS", "BT", "BY",
-                                                     "CH", "CN", "CL", "CO", "CR", "CU", "CV",
-                                                     "CY", "CZ", "DE", "DK", "DM", "DO", "EC",
-                                                     "EE", "EG", "ES", "FI", "FK", "FR", "GB",
-                                                     "GF", "GG", "GI", "GP", "GR", "GT", "HK",
-                                                     "HN", "HR", "HT", "HU", "ID", "IE", "IL",
-                                                     "IM", "IN", "IS", "IT", "JE", "JM", "JO",
-                                                     "KE", "KI", "KR", "KW", "LA", "LB", "LI",
-                                                     "LK", "LS", "LT", "LU", "LV", "MA", "MC",
-                                                     "MK", "MO", "MQ", "MR", "MT", "MU", "MV",
-                                                     "MW", "MX", "MY", "NG", "NI", "NL", "NO",
-                                                     "NZ", "OM", "PA", "PE", "PG", "PH", "PK",
-                                                     "PL", "PM", "PT", "RE", "RO", "RU", "SA",
-                                                     "SE", "SG", "SI", "SK", "SV", "TH", "TJ",
-                                                     "TN", "TR", "TT", "TZ", "UA", "UY", "UZ",
-                                                     "VA", "VE", "VG", "VN", "YT", "ZA", "ZM",
-                                                     "ED"
-                                                    };
+    char _fw_version[16];
 };
 
 #endif

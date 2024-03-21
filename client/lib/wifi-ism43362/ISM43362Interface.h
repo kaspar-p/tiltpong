@@ -26,12 +26,17 @@
 /** ISM43362Interface class
  *  Implementation of the NetworkStack for the ISM43362
  */
-class ISM43362Interface : public NetworkStack, public WiFiInterface {
+class ISM43362Interface : public NetworkStack, public WiFiInterface
+{
 public:
     /** ISM43362Interface lifetime
+     * @param mosi       MOSI pin
+     * @param miso       MISO pin
+     * @param clk        CLOCK pin
+     * @param nss        NSS pin
      * @param debug     Enable debugging
      */
-    ISM43362Interface(bool debug = MBED_CONF_ISM43362_WIFI_DEBUG);
+    ISM43362Interface(PinName mosi, PinName miso, PinName clk, PinName nss, PinName reset, PinName dataready, PinName wakeup, bool debug = false);
 
     /** Start the interface
      *
@@ -40,7 +45,7 @@ public:
      *
      *  @return         0 on success, negative error code on failure
      */
-    virtual nsapi_error_t connect();
+    virtual int connect();
 
     /** Start the interface
      *
@@ -52,9 +57,23 @@ public:
      *  @param channel   This parameter is not supported, setting it to anything else than 0 will result in NSAPI_ERROR_UNSUPPORTED
      *  @return          0 on success, or error code on failure
      */
-    virtual nsapi_error_t connect(const char *ssid, const char *pass, nsapi_security_t security = NSAPI_SECURITY_NONE,
+    virtual int connect(const char *ssid, const char *pass, nsapi_security_t security = NSAPI_SECURITY_NONE,
                                   uint8_t channel = 0);
-
+    
+    /** Translates a hostname to an IP address with specific version
+     *
+     *  The hostname may be either a domain name or an IP address. If the
+     *  hostname is an IP address, no network transactions will be performed.
+     *
+     *
+     *  @param host     Hostname to resolve
+     *  @param address  Destination for the host SocketAddress
+     *  @param version  IP version of address to resolve, NSAPI_UNSPEC indicates
+     *                  version is chosen by the stack (defaults to NSAPI_UNSPEC)
+     *  @return         0 on success, negative error code on failure
+     */
+    virtual nsapi_error_t gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version = NSAPI_UNSPEC);
+    
     /** Set the WiFi network credentials
      *
      *  @param ssid      Name of the network to connect to
@@ -77,28 +96,24 @@ public:
     /** Stop the interface
      *  @return             0 on success, negative on failure
      */
-    virtual nsapi_error_t disconnect();
+    virtual int disconnect();
 
     /** Get the internally stored IP address
      *  @return             IP address of the interface or null if not yet connected
      */
     virtual const char *get_ip_address();
 
-    virtual nsapi_error_t get_ip_address(SocketAddress *address);
-
     /** Get the internally stored MAC address
      *  @return             MAC address of the interface
      */
     virtual const char *get_mac_address();
 
-    /** Get the local gateway
-    *
-    *  @return         Null-terminated representation of the local gateway
-    *                  or null if no network mask has been recieved
-    */
+     /** Get the local gateway
+     *
+     *  @return         Null-terminated representation of the local gateway
+     *                  or null if no network mask has been recieved
+     */
     virtual const char *get_gateway();
-
-    virtual nsapi_error_t get_gateway(SocketAddress *address);
 
     /** Get the local network mask
      *
@@ -106,15 +121,6 @@ public:
      *                  or null if no network mask has been recieved
      */
     virtual const char *get_netmask();
-
-    virtual nsapi_error_t get_netmask(SocketAddress *address);
-
-    /** Get the network interface name
-     *
-     *  @return         Null-terminated representation of the network interface name
-     *                  or null if interface not exists
-     */
-    virtual char *get_interface_name(char *interface_name);
 
     /** Gets the current radio signal strength for active connection
      *
@@ -128,26 +134,34 @@ public:
      *
      * @param  ap       Pointer to allocated array to store discovered AP
      * @param  count    Size of allocated @a res array, or 0 to only count available AP
+     * @param  timeout  Timeout in milliseconds; 0 for no timeout (Default: 0)
      * @return          Number of entries in @a, or if @a count was 0 number of available networks, negative on error
      *                  see @a nsapi_error
      */
     virtual int scan(WiFiAccessPoint *res, unsigned count);
 
-    /** Register callback for status reporting
+    /** Translates a hostname to an IP address with specific version
      *
-     *  The specified status callback function will be called on status changes
-     *  on the network. The parameters on the callback are the event type and
-     *  event-type dependent reason parameter.
+     *  The hostname may be either a domain name or an IP address. If the
+     *  hostname is an IP address, no network transactions will be performed.
      *
-     *  @param status_cb The callback for status changes
+     *  If no stack-specific DNS resolution is provided, the hostname
+     *  will be resolve using a UDP socket on the stack.
+     *
+     *  @param address  Destination for the host SocketAddress
+     *  @param host     Hostname to resolve
+     *  @param version  IP version of address to resolve, NSAPI_UNSPEC indicates
+     *                  version is chosen by the stack (defaults to NSAPI_UNSPEC)
+     *  @return         0 on success, negative error code on failure
      */
-    virtual void attach(mbed::Callback<void(nsapi_event_t, intptr_t)> status_cb);
+    using NetworkInterface::gethostbyname;
 
-    /** Get the connection status
+    /** Add a domain name server to list of servers to query
      *
-     *  @return         The connection status according to ConnectionStatusType
+     *  @param addr     Destination for the host address
+     *  @return         0 on success, negative error code on failure
      */
-    virtual nsapi_connection_status_t get_connection_status() const;
+    using NetworkInterface::add_dns_server;
 
 protected:
     /** Open a socket
@@ -264,13 +278,9 @@ private:
     Mutex _mutex;
     Thread thread_read_socket;
     char ap_ssid[33]; /* 32 is what 802.11 defines as longest possible name; +1 for the \0 */
-    ism_security_t ap_sec;
+    nsapi_security_t ap_sec;
     uint8_t ap_ch;
     char ap_pass[64]; /* The longest allowed passphrase */
-    nsapi_error_t _connect_status ;
-
-    bool _ism_debug;
-    uint32_t _FwVersion;
 
     void event();
     struct {
@@ -284,12 +294,6 @@ private:
     virtual void socket_check_read();
     int socket_send_nolock(void *handle, const void *data, unsigned size);
     int socket_connect_nolock(void *handle, const SocketAddress &addr);
-
-    // Connection state reporting to application
-    void update_conn_state_cb();
-    nsapi_connection_status_t _conn_stat;
-    mbed::Callback<void(nsapi_event_t, intptr_t)> _conn_stat_cb;
-
 
 };
 

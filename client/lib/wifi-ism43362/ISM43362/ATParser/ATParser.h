@@ -26,7 +26,6 @@
 #include "BufferedSpi.h"
 #include "Callback.h"
 
-#define DEFAULT_SPI_TIMEOUT 60000 /* 1 minute */
 
 /**
 * Parser class for parsing AT commands
@@ -45,18 +44,21 @@
 * at.recv("OK");
 * @endcode
 */
-class ATParser {
+class ATParser
+{
 private:
     // Serial information
     BufferedSpi *_serial_spi;
     int _buffer_size;
     char *_buffer;
     Mutex _bufferMutex;
+    volatile int _timeout;
 
     // Parsing information
     const char *_delimiter;
     int _delim_size;
     char _in_prev;
+    bool dbg_on;
     volatile bool _aborted;
 
     struct oob {
@@ -76,7 +78,15 @@ public:
     * @param timeout timeout of the connection
     * @param delimiter string of characters to use as line delimiters
     */
-    ATParser(BufferedSpi &serial_spi, const char *delimiter = "\r\n", int buffer_size = 1440, int timeout = DEFAULT_SPI_TIMEOUT);
+    ATParser(BufferedSpi &serial_spi, const char *delimiter = "\r\n", int buffer_size = 1440, int timeout = 8000, bool debug = false) :
+        _serial_spi(&serial_spi),
+        _buffer_size(buffer_size), _in_prev(0), _oobs(NULL)
+    {
+        _buffer = new char[buffer_size];
+        setTimeout(timeout);
+        setDelimiter(delimiter);
+        debugOn(debug);
+    }
 
     /**
     * Destructor
@@ -96,8 +106,9 @@ public:
     *
     * @param timeout timeout of the connection
     */
-    void setTimeout(int timeout)
+    void setTimeout(int timeout) 
     {
+        _timeout = timeout;
         _serial_spi->setTimeout(timeout);
     }
 
@@ -106,10 +117,18 @@ public:
     *
     * @param delimiter string of characters to use as line delimiters
     */
-    void setDelimiter(const char *delimiter)
-    {
+    void setDelimiter(const char *delimiter) {
         _delimiter = delimiter;
         _delim_size = strlen(delimiter);
+    }
+    
+    /**
+    * Allows echo to be on or off
+    *
+    * @param echo 1 for echo and 0 turns it off
+    */
+    void debugOn(uint8_t on) {
+        dbg_on = (on) ? 1 : 0;
     }
 
     /**
@@ -224,7 +243,7 @@ public:
      * recv operation.
      */
     void abort();
-
+    
     /**
     * Process out-of-band data
     *
@@ -237,8 +256,7 @@ public:
     /**
     * Get buffer_size
     */
-    int get_size(void)
-    {
+    int get_size(void) {
         return _buffer_size;
     }
 
