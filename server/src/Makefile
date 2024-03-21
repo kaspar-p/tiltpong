@@ -4,7 +4,7 @@ FLAGS = -Wall -Wpedantic
 HEADERS = ../third_party/libcoap/include ../third_party/libwebsockets/include
 LIBS = ../third_party/libcoap/.libs
 
-all: main websocket
+all: main
 
 clean:
 	rm -rf main websocket *.o
