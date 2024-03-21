@@ -1,54 +1,100 @@
+/*
+ * lws-minimal-ws-server-echo
+ *
+ * Written in 2010-2019 by Andy Green <andy@warmcat.com>
+ *
+ * This file is made available under the Creative Commons CC0 1.0
+ * Universal Public Domain Dedication.
+ *
+ * This demonstrates a ws server that echoes back what it was sent, in a way
+ * compatible with autobahn -m fuzzingclient
+ */
+
 #include <libwebsockets.h>
 #include <signal.h>
+#include <string.h>
 
-extern const lws_ss_info_t ssi_myss_srv_t;
+#include "ws.h"
 
-static struct lws_context *cx;
-int test_result = 0, multipart;
+static struct lws_protocols protocols[] = {
+    LWS_PLUGIN_PROTOCOL_MINIMAL_SERVER_ECHO, LWS_PROTOCOL_LIST_TERM};
 
-static int
-smd_cb(void *opaque, lws_smd_class_t c, lws_usec_t ts, void *buf, size_t len)
-{
-	if (!(c & LWSSMDCL_SYSTEM_STATE) ||
-	    lws_json_simple_strcmp(buf, len, "\"state\":", "OPERATIONAL") ||
-	    !lws_ss_create(cx, 0, &ssi_myss_srv_t, NULL, NULL, NULL, NULL))
-		return 0;
+static int interrupted, port = 7681, options;
 
-	lwsl_err("%s: failed to create secure stream\n", __func__);
-	lws_default_loop_exit(cx);
+/* pass pointers to shared vars to the protocol */
 
-	return -1;
-}
+static const struct lws_protocol_vhost_options pvo_options = {
+    NULL, NULL, "options", /* pvo name */
+    (void *)&options       /* pvo value */
+};
 
-static void
-sigint_handler(int sig)
-{
-	lws_default_loop_exit(cx);
-}
+static const struct lws_protocol_vhost_options pvo_interrupted = {
+    &pvo_options, NULL, "interrupted", /* pvo name */
+    (void *)&interrupted               /* pvo value */
+};
 
-int
-main(int argc, const char **argv)
-{
-	struct lws_context_creation_info info;
+static const struct lws_protocol_vhost_options pvo = {
+    NULL,                      /* "next" pvo linked-list */
+    &pvo_interrupted,          /* "child" pvo linked-list */
+    "lws-minimal-server-echo", /* protocol name we belong to on this vhost */
+    ""                         /* ignored */
+};
+static const struct lws_extension extensions[] = {
+    {"permessage-deflate", lws_extension_callback_pm_deflate,
+     "permessage-deflate"
+     "; client_no_context_takeover"
+     "; client_max_window_bits"},
+    {NULL, NULL, NULL /* terminator */}};
 
-	lws_context_info_defaults(&info, "example-policy.json");
-	lws_cmdline_option_handle_builtin(argc, argv, &info);
-	signal(SIGINT, sigint_handler);
+void sigint_handler(int sig) { interrupted = 1; }
 
-	lwsl_user("LWS Secure Streams Server\n");
+int main(int argc, const char **argv) {
+  struct lws_context_creation_info info;
+  struct lws_context *context;
+  const char *p;
+  int n = 0, logs = LLL_USER | LLL_ERR | LLL_WARN | LLL_NOTICE
+      /* for LLL_ verbosity above NOTICE to be built into lws,
+       * lws must have been configured and built with
+       * -DCMAKE_BUILD_TYPE=DEBUG instead of =RELEASE */
+      /* | LLL_INFO */ /* | LLL_PARSER */ /* | LLL_HEADER */
+      /* | LLL_EXT */ /* | LLL_CLIENT */  /* | LLL_LATENCY */
+      /* | LLL_DEBUG */;
 
-	info.early_smd_cb		= smd_cb;
-	info.early_smd_class_filter	= LWSSMDCL_SYSTEM_STATE;
+  signal(SIGINT, sigint_handler);
 
-	cx = lws_create_context(&info);
-	if (!cx) {
-		lwsl_err("lws init failed\n");
-		return 1;
-	}
+  if ((p = lws_cmdline_option(argc, argv, "-d"))) logs = atoi(p);
 
-	lws_context_default_loop_run_destroy(cx);
+  lws_set_log_level(logs, NULL);
+  lwsl_user(
+      "LWS minimal ws client echo + permessage-deflate + multifragment bulk "
+      "message\n");
+  lwsl_user(
+      "   lws-minimal-ws-client-echo [-n (no exts)] [-p port] [-o (once)]\n");
 
-	/* process ret 0 if actual is as expected (0, or--expected-exit 123) */
+  if ((p = lws_cmdline_option(argc, argv, "-p"))) port = atoi(p);
 
-	return lws_cmdline_passfail(argc, argv, test_result);
+  if (lws_cmdline_option(argc, argv, "-o")) options |= 1;
+
+  memset(&info, 0, sizeof info); /* otherwise uninitialized garbage */
+  info.port = port;
+  info.protocols = protocols;
+  info.pvo = &pvo;
+  if (!lws_cmdline_option(argc, argv, "-n")) info.extensions = extensions;
+  info.pt_serv_buf_size = 32 * 1024;
+  info.options = LWS_SERVER_OPTION_VALIDATE_UTF8 |
+                 LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE;
+
+  context = lws_create_context(&info);
+  if (!context) {
+    lwsl_err("lws init failed\n");
+    return 1;
+  }
+
+  while (n >= 0 && !interrupted) n = lws_service(context, 0);
+
+  lws_context_destroy(context);
+
+  lwsl_user("Completed %s\n", interrupted == 2 ? "OK" : "failed");
+
+  return interrupted != 2;
 }
