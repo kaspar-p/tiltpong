@@ -1,5 +1,24 @@
 import P5 from "p5";
 
+const socket = new WebSocket("ws://localhost:7681");
+
+socket.addEventListener("open", (event) => {
+  socket.send(JSON.stringify({
+    paddles: [
+      { score: 10, angle: 68, y: 100 },
+      { score: 0, angle: 33, y: 300 },
+    ],
+    ball: {
+      x: 100,
+      y: 100,
+    }
+  }));
+});
+
+socket.addEventListener("message", (event) => {
+  console.log("Message from server:", JSON.parse(event.data));
+});
+
 type Paddle = {
   score: number;
   angle: number;
@@ -89,4 +108,4 @@ const sketch = (p5: P5) => {
   }
 }
 
-new P5(sketch);
+// new P5(sketch);

@@ -11,12 +11,14 @@
   },
   "license": "ISC",
   "devDependencies": {
+    "@types/p5": "^1.7.6",
+    "@types/ws": "^8.5.10",
     "esbuild": "^0.20.1",
     "prettier": "^3.2.5",
-    "typescript": "^5.3.3",
-    "@types/p5": "^1.7.6"
+    "typescript": "^5.3.3"
   },
   "dependencies": {
-    "p5": "^1.9.1"
+    "p5": "^1.9.1",
+    "ws": "^8.16.0"
   }
 }
