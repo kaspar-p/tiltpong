@@ -25,4 +25,15 @@ int callback_minimal_server_echo(struct lws *wsi,
     "lws-minimal-server-echo", callback_minimal_server_echo,                   \
         sizeof(struct per_session_data__minimal_server_echo), 1024, 0, NULL, 0 \
   }
+int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
+                            void *user, void *in, size_t len);
+
+#define LWS_PROTOCOL_SEND_GAME_DATA                                            \
+  {                                                                            \
+    "lws-tiltpong-send-game-data", callback_send_game_data,                    \
+        sizeof(struct per_session_data__minimal_server_echo), 1024, 0, NULL, 0 \
+  }
+
+int websocket_start();
+
 #endif

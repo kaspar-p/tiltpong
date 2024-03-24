@@ -15,7 +15,7 @@
 #include <libwebsockets.h>
 #include <string.h>
 
-#include "ws.h"
+#include "websocket.h"
 
 #define RING_DEPTH 4096
 
@@ -45,6 +45,7 @@ static void __minimal_destroy_message(void *_msg) {
   msg->len = 0;
 }
 #include <assert.h>
+#include <stdbool.h>
 int callback_minimal_server_echo(struct lws *wsi,
                                  enum lws_callback_reasons reason, void *user,
                                  void *in, size_t len) {
@@ -199,6 +200,74 @@ int callback_minimal_server_echo(struct lws *wsi,
       }
       break;
 
+    default:
+      break;
+  }
+
+  return 0;
+}
+
+bool work_to_be_done = true;
+
+int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
+                            void *user, void *in, size_t len) {
+  switch (reason) {
+    case LWS_CALLBACK_ESTABLISHED:
+      printf("connection established\n");
+      // get the ball rolling
+      // lws_callback_on_writable(wsi);
+      break;
+
+    case LWS_CALLBACK_RECEIVE:
+      printf("rcv!\n");
+      lws_callback_on_writable(wsi);
+      break;
+
+    case LWS_CALLBACK_SERVER_WRITEABLE: {
+      if (!work_to_be_done) {
+        // schedule ourselves to run next tick anyway
+        lws_callback_on_writable(wsi);
+        return 0;
+      }
+
+      char *buf = "\"{\"paddles\": 2}\"";
+
+      struct msg response;
+      response.len = strlen(buf);
+      response.payload = malloc(LWS_PRE + response.len);
+      memset((char *)response.payload + LWS_PRE, 0, response.len);
+      if (!response.payload) {
+        lwsl_err("OOM: dropping\n");
+        break;
+      }
+
+      strcpy(response.payload, buf);
+      response.first = 1;
+      response.final = 1;
+      printf("sending back %zu bytes!\n", response.len);
+
+      // Send data to client
+      int flags = lws_write_ws_flags(LWS_WRITE_TEXT, true, true);
+      lwsl_info("sending data\n");
+
+      lws_write(wsi, response.payload, response.len, flags);
+
+      /* notice we allowed for LWS_PRE in the payload already */
+      int status = lws_write(wsi, ((unsigned char *)response.payload) + LWS_PRE,
+                             response.len, (enum lws_write_protocol)flags);
+      if (status < response.len) {
+        lwsl_err("ERROR %d writing to ws socket\n", status);
+        return -1;
+      }
+
+      free(response.payload);
+
+      lwsl_user(" wrote %d: flags: 0x%x\n", status, flags);
+
+      // Schedule ourselves again
+      lws_callback_on_writable(wsi);
+      break;
+    }
     default:
       break;
   }

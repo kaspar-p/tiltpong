@@ -3,30 +3,61 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#include "game.h"
+#include "tiltpong.h"
+#include "websocket.h"
+
 void *start_thread_ws(void *arg) {
-  printf("Working! %d\n", ((int *)arg)[0]);
-  return "hi!\n";
+  printf("Starting websocket server! %d\n", ((int *)arg)[0]);
+
+  websocket_start();
+
+  return "done";
+}
+
+void *start_thread_game(void *arg) {
+  printf("Starting game! %d\n", ((int *)arg)[0]);
+
+  game_start();  // never exits
+
+  return "done";
+}
+
+void *start_thread_coap(void *arg) {
+  printf("Starting coap server! %d\n", ((int *)arg)[0]);
+  return "done";
+}
+
+void sigint_handler(int sig) { interrupted = 1; }
+
+pthread_t *thread_create(void *(entry)(void *)) {
+  int status = 0;
+  pthread_t *thread = malloc(sizeof(pthread_t));
+  assert(thread);
+  pthread_attr_t thread_attr;
+  status = pthread_attr_init(&thread_attr);
+  assert(status == 0);
+
+  int arg = 10;
+  status = pthread_create(thread, &thread_attr, entry, &arg);
+  assert(status == 0);
+
+  return thread;
 }
 
 int main() {
   int status = 0;
-  pthread_t *thread_ws = malloc(sizeof(pthread_t));
-  assert(thread_ws);
-  pthread_attr_t thread_ws_attr;
 
-  status = pthread_attr_init(&thread_ws_attr);
-  assert(status == 0);
-  int arg = 17;
-  pthread_create(thread_ws, &thread_ws_attr, &start_thread_ws, &arg);
+  signal(SIGINT, sigint_handler);
 
-  pthread_t *thread_coap = malloc(sizeof(pthread_t));
-  assert(thread_ws);
-  pthread_attr_t thread_coap_attr;
+  pthread_t *thread_ws = thread_create(&start_thread_ws);
+  pthread_t *thread_game = thread_create(&start_thread_game);
+  pthread_t *thread_coap = thread_create(&start_thread_coap);
 
   void *result;
-  status = pthread_join(*thread_ws, &result);
-  assert(status == 0);
-
+  assert(pthread_join(*thread_ws, &result) == 0);
+  assert(pthread_join(*thread_game, &result) == 0);
+  assert(pthread_join(*thread_coap, &result) == 0);
   printf("Returned %s", (char *)result);
 
   return status;

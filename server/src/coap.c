@@ -57,12 +57,12 @@ void handler_update(coap_resource_t *resource, coap_session_t *session,
   coap_show_pdu(COAP_LOG_WARN, response);
 }
 
-void coap_free(coap_context_t * ctx) {
+void coap_free(coap_context_t *ctx) {
   coap_free_context(ctx);
   coap_cleanup();
 }
 
-coap_context_t* coap_init() {
+coap_context_t *coap_init() {
   coap_address_t dst;
   int result = EXIT_FAILURE;
 
@@ -74,13 +74,13 @@ coap_context_t* coap_init() {
   coap_context_t *ctx = NULL;
   if (resolve_address("localhost", "5683", &dst) < 0) {
     coap_log_crit("Failed to resolve address\n");
-    goto finish;
+    return NULL;
   }
 
   ctx = coap_new_context(NULL);
   if (!ctx || !(coap_new_endpoint(ctx, &dst, COAP_PROTO_UDP))) {
     coap_log_emerg("cannot initialize context!\n");
-    goto finish;
+    return NULL;
   }
 
   coap_str_const_t *resource_uri = coap_make_str_const("update");
@@ -91,9 +91,8 @@ coap_context_t* coap_init() {
   return ctx;
 }
 
-void coap_listen(coap_context_t* ctx) {
-  while(true) {
+void coap_listen(coap_context_t *ctx) {
+  while (true) {
     coap_io_process(ctx, COAP_IO_WAIT);
   }
 }
-

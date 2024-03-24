@@ -1,25 +1,24 @@
-CC = gcc
-FLAGS = -Wall -Wpedantic
+CC = clang
+FLAGS = -Wall -Wpedantic -I../third_party/libcoap/include -I../third_party/libwebsockets/include -I/usr/local/include -I/usr/local/Cellar/gnutls/3.8.4
 
-HEADERS = ../third_party/libcoap/include ../third_party/libwebsockets/include
-LIBS = ../third_party/libcoap/.libs
+LIBS = -L../third_party/libcoap/.libs -lgnutls -lcoap-3-gnutls -L../third_party/libwebsockets/build/lib -lwebsockets
 
 all: main
 
 clean:
-	rm -rf main websocket *.o
+	rm -rf main game websocket *.o
 
-websocket: websocket.o wsserver.o
-	${CC} -lssl -lcrypto -L../third_party/libwebsockets/build/lib -lwebsockets $^ -o $@
-
-websocket.o: websocket.c
-	${CC} -I${HEADERS} ${FLAGS} -c $^ -o $@
-
-wsserver.o: wsserver.c
-	${CC} -I${HEADERS} -Iws.h ${FLAGS} -c $^ -o $@
-
-main: main.o
-	${CC} -lgnutls -L${LIBS} -lcoap-3-gnutls $^ -o $@
+main: main.o websocket.o ws_callbacks.o game.o
+	${CC} -o $@ $^ ${FLAGS} ${LIBS} 
 
 main.o: main.c
-	${CC} -I${HEADERS} ${FLAGS} -c $^ -o $@
+	${CC} ${FLAGS} -c $^
+
+websocket.o: websocket.c
+	${CC} ${FLAGS} -c $^
+
+ws_callbacks.o: ws_callbacks.c
+	${CC} ${FLAGS} -c $^
+
+game.o: game.c
+	${CC} ${FLAGS} -c $^

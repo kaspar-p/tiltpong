@@ -10,16 +10,19 @@
  * compatible with autobahn -m fuzzingclient
  */
 
+#include "websocket.h"
+
 #include <libwebsockets.h>
 #include <signal.h>
 #include <string.h>
 
-#include "ws.h"
+#include "tiltpong.h"
 
 static struct lws_protocols protocols[] = {
-    LWS_PLUGIN_PROTOCOL_MINIMAL_SERVER_ECHO, LWS_PROTOCOL_LIST_TERM};
+    LWS_PLUGIN_PROTOCOL_MINIMAL_SERVER_ECHO, LWS_PROTOCOL_SEND_GAME_DATA,
+    LWS_PROTOCOL_LIST_TERM};
 
-static int interrupted, port = 7681, options;
+static int port = 7681, options;
 
 /* pass pointers to shared vars to the protocol */
 
@@ -39,15 +42,10 @@ static const struct lws_protocol_vhost_options pvo = {
     "lws-minimal-server-echo", /* protocol name we belong to on this vhost */
     ""                         /* ignored */
 };
-static const struct lws_extension extensions[] = {
-    {NULL, NULL, NULL /* terminator */}};
 
-void sigint_handler(int sig) { interrupted = 1; }
-
-int main(int argc, const char **argv) {
+int websocket_start() {
   struct lws_context_creation_info info;
   struct lws_context *context;
-  const char *p;
   int n = 0, logs = LLL_USER | LLL_ERR | LLL_WARN | LLL_NOTICE
       /* for LLL_ verbosity above NOTICE to be built into lws,
        * lws must have been configured and built with
@@ -56,10 +54,6 @@ int main(int argc, const char **argv) {
       /* | LLL_EXT */ /* | LLL_CLIENT */  /* | LLL_LATENCY */
       /* | LLL_DEBUG */;
 
-  signal(SIGINT, sigint_handler);
-
-  if ((p = lws_cmdline_option(argc, argv, "-d"))) logs = atoi(p);
-
   lws_set_log_level(logs, NULL);
   lwsl_user(
       "LWS minimal ws client echo + permessage-deflate + multifragment bulk "
@@ -67,15 +61,10 @@ int main(int argc, const char **argv) {
   lwsl_user(
       "   lws-minimal-ws-client-echo [-n (no exts)] [-p port] [-o (once)]\n");
 
-  if ((p = lws_cmdline_option(argc, argv, "-p"))) port = atoi(p);
-
-  if (lws_cmdline_option(argc, argv, "-o")) options |= 1;
-
   memset(&info, 0, sizeof info); /* otherwise uninitialized garbage */
   info.port = port;
   info.protocols = protocols;
   info.pvo = &pvo;
-  if (!lws_cmdline_option(argc, argv, "-n")) info.extensions = extensions;
   info.pt_serv_buf_size = 32 * 1024;
   info.options = LWS_SERVER_OPTION_VALIDATE_UTF8 |
                  LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE;
