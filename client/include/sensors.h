@@ -14,5 +14,5 @@ void read_gyro();
 void accelerometer_init();
 void get_accelerometer(int16_t *xyz_counts);
 double get_tilt();
-std::array<double, 3> get_new_position();
+double get_new_position();
 

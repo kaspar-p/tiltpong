@@ -53,68 +53,64 @@ double get_tilt()
   double z = xyz_counts[2];
 
   double phi = acos(z / sqrt(x * x + y * y + z * z)); // radians
-  phi = phi * (180 / 3.14159); // convert to degrees
+  // phi = phi * (180 / 3.14159);                        // convert to degrees
   return phi;
 }
 
 // assume device starts at position (0,0,0) and is not moving
-std::vector<std::array<double, 3>> acceleration = { {0, 0, 0} };
-std::vector<std::array<double, 3>> velocity = { {0, 0, 0} };
-std::vector<std::array<double, 3>> position = { {0, 0, 0} };
-
-
+double old_acceleration = 0;
+double old_velocity = 0;
+double old_position = 0;
 /**
- * Crude method for computing position by double integrating acceleration
- * Not very accurate and likely needs a lot of work 
- * Consider other ideas for position of paddle
-*/
-std::array<double, 3> get_new_position()
+ * Compute the velocity of the device by integrating acceleration.
+ * Several assumptions are made to improve usability
+ * - If acceleration is 0 then velocity is set to 0
+ * - We're only computing the velocity along the z axis.
+ * - The device has to be mostly held still such that gravity mostly only acts on the z axis
+ */
+double get_new_position()
 {
-  // for now only doing time steps of 1 second
-  double delta_t = 1; 
-
-  // get previous values for computing
-  std::array<double, 3> old_acceleration = acceleration.back();
-  std::array<double, 3> old_velocity = velocity.back();
-  std::array<double, 3> old_position = position.back();
+  double delta_t = 0.01;
 
   // acceleration reading
   int16_t xyz_counts[3] = {0};
   BSP_ACCELERO_AccGetXYZ(xyz_counts);
-  xyz_counts[2] = xyz_counts[2] - 1000; // remove gravity from calculation
-
-  for (int i = 0; i < 3; i++) {
-    if (xyz_counts[i] <= 100 && xyz_counts[i] >= -100) {
-      xyz_counts[i] = 0; 
-    }
-  }
-
-  std::array<double, 3> new_acceleration = {(double)xyz_counts[0], (double)xyz_counts[1], (double)xyz_counts[2]};
-
-  // compute new velocity 
-  double new_velocity_x = old_velocity[0] + (old_acceleration[0] + new_acceleration[0]) / 2 * delta_t;
-  double new_velocity_y = old_velocity[1] + (old_acceleration[1] + new_acceleration[1]) / 2 * delta_t;
-  double new_velocity_z = old_velocity[2] + (old_acceleration[2] + new_acceleration[2]) / 2 * delta_t;
+  double angle = get_tilt();
+  double approx_g = cos(angle) * 1000;
+  double new_acceleration = xyz_counts[2] - approx_g; // remove gravity from calculation
   
-  std::array<double, 3> new_velocity = {new_velocity_x, new_velocity_y, new_velocity_z};
+  double new_velocity = 0;
+  double new_position = 0; 
 
-  // compute new position from computed velocity
-  double new_position_x = old_position[0] + (old_velocity[0] + new_velocity[0]) / 2 * delta_t;
-  double new_position_y = old_position[1] + (old_velocity[1] + new_velocity[1]) / 2 * delta_t;
-  double new_position_z = old_position[2] + (old_velocity[2] + new_velocity[2]) / 2 * delta_t;
+  // close enough to not moving that we set it to 0
+  // compute new velocity
+  // when movement stops we wipe the previous informaiton as an attempt to counter drift
+  // might have to mess with these boundaries
+  if (-10 <= new_acceleration && new_acceleration <= 10)
+  {
+    new_acceleration = 0;
+    old_acceleration = 0; 
+    old_velocity = 0; 
+    new_position = old_position;
+  }
+  else
+  {
+    new_velocity = old_velocity + (old_acceleration + new_acceleration) / 2 * delta_t;
+    new_position = old_position + (old_velocity + new_velocity) / 2 * delta_t;
+  }
+  
+  old_acceleration = new_acceleration;
+  old_velocity = new_velocity;
+  old_position = new_position;
 
-  std::array<double, 3> new_position = {new_position_x, new_position_y, new_position_z};
+  // + is up - is down
+  char direction = (new_velocity >= 0) ? '-' : '+';
+  direction = (new_velocity == 0) ? 'X' : direction;
 
-  acceleration.push_back(new_acceleration);
-  velocity.push_back(new_velocity);
-  position.push_back(new_position);
+  printf("[ACCELERATION] %.2f ", new_acceleration);
+  printf("[VELOCITY] %.2f ", new_velocity);
+  printf("[POSITION] %.2f ", new_position);
+  printf("[DIRECTION] %c\n", direction);
 
-
-  printf("[ACCELERATION] (x, y, z) = (%f, %f, %f)\n", new_acceleration[0], new_acceleration[1], new_acceleration[2]);
-  printf("[VELOCITY]     (x, y, z) = (%f, %f, %f)\n", new_velocity[0], new_velocity[1], new_velocity[2]);
-  printf("[POSITION]     (x, y, z) = (%f, %f, %f)\n", new_position[0], new_position[1], new_position[2]);
-
-  return new_position;  
+  return new_velocity;
 }
-
-
