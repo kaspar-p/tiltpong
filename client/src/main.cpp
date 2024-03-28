@@ -25,14 +25,14 @@ void button_fall_handler() {
 int main() {
   printf("START\n");
 
-  //coap_init();
+  coap_init();
 
-  accelerometer_init();
-  gyro_init();
+  // accelerometer_init();
+  // gyro_init();
 
-  queue.call_every(5ms, button_fall_handler);
-  queue.call_every(10ms, get_sensor_data);
-  queue.dispatch_forever();
+  // queue.call_every(5ms, button_fall_handler);
+  // queue.call_every(1000ms, get_sensor_data);
+  // queue.dispatch_forever();
 
   // should never reach here
   return 0;

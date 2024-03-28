@@ -7,7 +7,11 @@ Thread recvfromThread;
 struct coap_s *coapHandle;
 coap_version_e coapVersion = COAP_VERSION_1;
 SocketAddress *sock_addr;
-const char * SERVER_IP = "10.0.0.111";
+const char *SERVER_IP = "10.0.0.111";
+
+extern "C" void mbed_mac_address(char *s);
+uint64_t uid = 0;
+char mac[6];
 
 void *coap_malloc(uint16_t size) { return malloc(size); }
 
@@ -73,7 +77,11 @@ const char *sec2str(nsapi_security_t sec) {
     }
 }
 
-int coap_init() { 
+int coap_init() {
+  mbed_mac_address(mac);
+  uid = mac[0] << 20 << 20 | mac[1] << 16 << 16 | mac[2] << 24 | mac[3] << 16 | mac[4] << 8 | mac[5] << 0;
+  printf("UID: %lld\n", uid);
+  
   printf("Initializing network interface... ");
   ISM43362Interface * network = new ISM43362Interface(PC_12, PC_11, PC_10, PE_0, PE_8, PE_1, PB_13);
   printf("Done\n");
@@ -83,61 +91,56 @@ int coap_init() {
     return 1;
   }
 
+  network->set_as_default();
+  network->set_blocking(true);
+
   printf("Connecting... ");
   network->connect("Noorani", "billykabacha", NSAPI_SECURITY_WPA2);
   printf("Done\n");
 
-  printf("ipv4: %s\n", network->get_ip_address());
+  // printf("ipv4: %s\n", network->get_ip_address());
 
   printf("Opening socket... ");
   socket.open(network);
   socket.set_blocking(true);
   printf("Done\n");
 
-  /*
-  SocketAddress addr("10.0.0.111", 8080);
-  // network->gethostbyname("https://cloudflare.com/cdn-cgi/trace", &addr);
-
-  std::string request;
-  std::string buffer;
-
-  request.append("GET")
-  .append("/")
-  .append("HTTP/1.1\r\n")
-  .append("Host: ")
-  .append("http://10.0.0.111:8080")
-  .append("\r\n")
-  .append("Connection: close\r\n\r\n");
-
+  /* TCP request
+  SocketAddress addr(SERVER_IP, 8080);
+  std::string request = "GET / HTTP/1.1\r\nHost: 192.168.223.29:8080\r\nConnection: close\r\n\r\n";
   TCPSocket socket;
   socket.open(network);
   socket.connect(addr);
   socket.send(request.c_str(), request.length());
-
   printf("request sent\n");
   */
 
   coapHandle = sn_coap_protocol_init(&coap_malloc, &coap_free, &coap_tx_cb, &coap_rx_cb);
 
-  const char *coap_uri_path = "/update";
+  const char *coap_uri_path = "update";
 
   sn_coap_hdr_s *coap_res_ptr = (sn_coap_hdr_s *)calloc(sizeof(sn_coap_hdr_s), 1);
-  coap_res_ptr->uri_path_ptr = (uint8_t *)coap_uri_path;
-  coap_res_ptr->uri_path_len = strlen(coap_uri_path);
+  coap_res_ptr->token_len = 0;
+  // coap_res_ptr->coap_status = COAP_STATUS_OK;
   coap_res_ptr->msg_code = COAP_MSG_CODE_REQUEST_GET;
+  coap_res_ptr->msg_type = COAP_MSG_TYPE_CONFIRMABLE; // Can probably be non confirmable
   coap_res_ptr->content_format = COAP_CT_TEXT_PLAIN;
+  coap_res_ptr->msg_id = 300;
+  coap_res_ptr->uri_path_len = strlen(coap_uri_path);
   coap_res_ptr->payload_len = 0;
-  coap_res_ptr->payload_ptr = 0;
-  coap_res_ptr->options_list_ptr = 0;
-  coap_res_ptr->msg_id = 7;
+  coap_res_ptr->token_ptr = NULL;
+  coap_res_ptr->uri_path_ptr = (uint8_t *)coap_uri_path;
+  coap_res_ptr->payload_ptr = NULL;
+  coap_res_ptr->options_list_ptr = NULL;
 
   uint16_t message_len = sn_coap_builder_calc_needed_packet_data_size(coap_res_ptr);
   uint8_t *message_ptr = (uint8_t *)malloc(message_len);
+
   sn_coap_builder(message_ptr, coap_res_ptr);
 
   sock_addr = new SocketAddress(SERVER_IP, 5683);
   socket.connect(*sock_addr);
-  
+
   printf("Sending message... ");
 
   int scount = socket.send(message_ptr, message_len);
@@ -166,11 +169,12 @@ void coap_send(std::array<double, 3> position) {
   coap_res_ptr->content_format = COAP_CT_TEXT_PLAIN;
   coap_res_ptr->payload_len = strlen(buffer_cstr);
   coap_res_ptr->payload_ptr = (uint8_t*)buffer_cstr;
-  coap_res_ptr->options_list_ptr = 0;
+  coap_res_ptr->options_list_ptr = nullptr;
   coap_res_ptr->msg_id = 7;
 
   uint16_t message_len = sn_coap_builder_calc_needed_packet_data_size(coap_res_ptr);
   uint8_t *message_ptr = (uint8_t *)malloc(message_len);
+
   sn_coap_builder(message_ptr, coap_res_ptr);
 
   int scount = socket.send(message_ptr, message_len);
