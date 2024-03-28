@@ -49,14 +49,19 @@ finish:
   return len;
 }
 
-void handler_hello_world(coap_resource_t *resource, coap_session_t *session,
+/**
+ * @brief The handler for /update
+ *
+ * Type definitions from
+ * https://libcoap.net/doc/reference/4.3.4/coap__resource_8h_source.html
+ */
+void handler_update(coap_resource_t *resource, coap_session_t *session,
                          const coap_pdu_t *request, const coap_string_t *query,
                          coap_pdu_t *response) {
-  coap_log_crit("Got UPDATE!\n");
-
+  // coap_log_crit("Got UPDATE!\n");
   coap_pdu_set_code(response, COAP_RESPONSE_CODE_CONTENT);
-  const char *message = "Hello, world!";
-  coap_add_data(response, strlen(message), (const uint8_t *)message);
+  // const char *message = "Hello, world!";
+  // coap_add_data(response, strlen(message), (const uint8_t *)message);
   coap_show_pdu(COAP_LOG_WARN, response);
 }
 
@@ -73,6 +78,16 @@ void handler_ready(coap_resource_t *resource, coap_session_t *session,
   coap_pdu_set_code(response, COAP_RESPONSE_CODE_CONTENT);
   const char *message = "Received Ready!";
   coap_add_data(response, strlen(message), (const uint8_t *)message);
+  coap_show_pdu(COAP_LOG_WARN, response);
+}
+
+void handler_init_connection(coap_resource_t *resource, coap_session_t *session,
+                   const coap_pdu_t *request, const coap_string_t *query,
+                   coap_pdu_t *response) {
+  coap_log_crit("Got INIT!\n");
+  coap_pdu_set_code(response, COAP_RESPONSE_CODE_CONTENT);
+  // const char *message = "Received Ready!";
+  // coap_add_data(response, strlen(message), (const uint8_t *)message);
   coap_show_pdu(COAP_LOG_WARN, response);
 }
 
@@ -118,11 +133,20 @@ coap_context_t *tiltpong_coap_init(void) {
     return NULL;
   }
 
-  coap_str_const_t *resource_uri = coap_make_str_const("update");
-  coap_resource_t *resource = coap_resource_init(resource_uri, 0);
-  coap_register_handler(resource, COAP_REQUEST_GET, &handler_hello_world);
-  coap_register_handler(resource, COAP_REQUEST_POST, &handler_ready);
-  coap_add_resource(ctx, resource);
+  coap_str_const_t *update_uri = coap_make_str_const("update");
+  coap_resource_t *update_resource = coap_resource_init(update_uri, 0);
+  coap_register_handler(update_resource, COAP_REQUEST_POST, &handler_update);
+  coap_add_resource(ctx, update_resource);
+
+  coap_str_const_t *ready_uri = coap_make_str_const("ready");
+  coap_resource_t *ready_resource = coap_resource_init(ready_uri, 0);
+  coap_register_handler(ready_resource, COAP_REQUEST_POST, &handler_ready);
+  coap_add_resource(ctx, ready_resource);
+
+  coap_str_const_t *init_uri = coap_make_str_const("init");
+  coap_resource_t *init_resource = coap_resource_init(init_uri, 0);
+  coap_register_handler(init_resource, COAP_REQUEST_POST, &handler_init_connection);
+  coap_add_resource(ctx, init_resource);
 
   return ctx;
 }
