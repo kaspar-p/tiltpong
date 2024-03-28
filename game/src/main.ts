@@ -5,66 +5,55 @@ type Paddle = {
   angle: number;
   x: number;
   y: number;
+  height: number;
+  width: number;
 };
 
 type Ball = {
   x: number;
+  radius: number;
   y: number;
 };
 
 type Game = {
   width: number;
   height: number;
-  paddles: [Paddle, Paddle];
+  left: Paddle;
+  right: Paddle;
   ball: Ball;
 };
 
 let game: Game = {
   width: 400,
   height: 400,
-  paddles: [
-    { score: 10, angle: 68, x: 100, y: 100 },
-    { score: 0, angle: 33, x: 200, y: 300 },
-  ],
+  left: { height: 10, width: 10, score: 10, angle: 68, x: 100, y: 100 },
+  right: { height: 10, width: 10, score: 0, angle: 33, x: 200, y: 300 },
   ball: {
     x: 100,
     y: 100,
+    radius: 10,
   },
 };
 
-const socket = new WebSocket(
-  "ws://127.0.0.1:7681",
-  "lws-tiltpong-send-game-data",
-);
-socket.addEventListener("message", (data) => {
-  game = JSON.parse(data.data);
-});
-
-socket.addEventListener("message", (event) => {
-  console.log("Message from server:", JSON.parse(event.data));
-});
-
-function drawPaddle(p5: P5, paddle: Paddle, playerNum: 0 | 1) {
-  const offset = 50;
-  const x = playerNum === 0 ? offset : p5.width - offset;
-
+function drawPaddle(p5: P5, paddle: Paddle) {
   p5.push();
 
-  p5.rectMode("center");
-  p5.translate(x, paddle.y);
+  p5.translate(paddle.x, paddle.y);
   p5.angleMode("degrees");
-  p5.rotate(paddle.angle);
+  p5.rotate(paddle.angle + 90);
 
   p5.noStroke();
   p5.fill("white");
-  p5.rect(0, 0, 15, 100);
+  p5.rectMode("center");
+  p5.rect(0, 0, paddle.width, paddle.height);
 
   p5.pop();
 }
 
 function drawBall(p5: P5, ball: Ball) {
   p5.fill("white");
-  p5.rect(ball.x, ball.y, 15, 15);
+  p5.rectMode("center");
+  p5.rect(ball.x, ball.y, ball.radius);
 }
 
 function drawCenterLine(p5: P5) {
@@ -81,29 +70,47 @@ function drawCenterLine(p5: P5) {
 
 function drawScores(p5: P5, leftScore: number, rightScore: number) {
   const yOffset = 10;
-  const xOffset = 250;
+  const xOffsetFromCenter = 50;
   p5.textAlign("center", "top");
   p5.textSize(50);
-  p5.text(leftScore.toString(), xOffset, yOffset);
-  p5.text(rightScore.toString(), p5.width - xOffset, yOffset);
+  p5.text(leftScore.toString(), p5.width / 2 - xOffsetFromCenter, yOffset);
+  p5.text(rightScore.toString(), p5.width / 2 + xOffsetFromCenter, yOffset);
 }
+
+let socket: WebSocket;
+let started = false;
 
 const sketch = (p5: P5) => {
   p5.setup = () => {
-    const canvas = p5.createCanvas(800, 600);
+    const canvas = p5.createCanvas(400, 400);
     canvas.parent("container");
 
     p5.background("black");
+
+    socket = new WebSocket(
+      "ws://127.0.0.1:7681",
+      "lws-tiltpong-send-game-data",
+    );
+    socket.addEventListener("message", (data) => {
+      try {
+        game = JSON.parse(data.data);
+      } catch {}
+    });
   };
 
   p5.draw = () => {
     p5.background("black");
-    drawPaddle(p5, game.paddles[0], 0);
-    drawPaddle(p5, game.paddles[1], 1);
-    drawScores(p5, game.paddles[0].score, game.paddles[1].score);
+    drawPaddle(p5, game.left);
+    drawPaddle(p5, game.right);
+    drawScores(p5, game.left.score, game.right.score);
     drawCenterLine(p5);
     drawBall(p5, game.ball);
+
+    if (!started && p5.keyIsPressed == true && p5.key == " ") {
+      socket.send("start");
+      started = true;
+    }
   };
 };
 
-// new P5(sketch);
+new P5(sketch);

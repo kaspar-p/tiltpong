@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,41 +13,92 @@
 
 #include "utils.h"
 
-double dt = 0.5;
-game_t* game;
+double width = 400, height = 400;
 
-void game_score(game_t* game, side_e side) {
-  if (side == PADDLE_LEFT) {
+double dt = 0.5;
+
+game_t* game;
+game_buffer_t* GAME_BUFFER = NULL;
+
+void game_score(game_t* game, side_e scoring_side) {
+  if (scoring_side == PADDLE_LEFT) {
     game->left.score += 1;
   } else {
     game->right.score += 1;
   }
 
-  game->ball.pos_x = game->width / 2;
-  game->ball.pos_y = game->height / 2;
-  game->ball.vel_x = 1;
-  game->ball.vel_y = 0;
+  int left_score = game->left.score;
+  int right_score = game->right.score;
 
-  game->left.pos_y = game->height / 2;
-  game->left.vel_y = 0;
+  if (game->left.score == 10) {
+    printf(" ============================= \n");
+    printf(" ====== LEFT PADDLE WON ====== \n");
+    printf(" ============================= \n");
+    tiltpong_game_reset();
+    return;
+  }
 
-  game->right.pos_y = game->height / 2;
-  game->right.vel_y = 0;
+  if (game->right.score == 10) {
+    printf(" ============================== \n");
+    printf(" ====== RIGHT PADDLE WON ====== \n");
+    printf(" ============================== \n");
+    tiltpong_game_reset();
+    return;
+  }
+
+  tiltpong_game_reset();
+  game->left.score = left_score;
+  game->right.score = right_score;
 }
 
 void check_paddle_collisions(double width, paddle_t* paddle, ball_t* ball) {
-  bool in_y_range = ball->pos_y + ball->radius >= paddle->pos_y &&
-                    ball->pos_y - ball->radius <= paddle->pos_y + paddle->h;
-  bool in_x_range = ball->pos_x + ball->radius >= paddle->pos_x &&
-                    ball->pos_x - ball->radius <= paddle->pos_x + paddle->w;
+  bool in_y_range =
+      ball->pos_y + ball->radius >= paddle->pos_y - paddle->h / 2 &&
+      ball->pos_y - ball->radius <= paddle->pos_y + paddle->h / 2;
+  bool in_x_range =
+      ball->pos_x + ball->radius >= paddle->pos_x - paddle->w / 2 &&
+      ball->pos_x - ball->radius <= paddle->pos_x + paddle->w / 2;
   bool hit = in_y_range && in_x_range;
   if (!hit) return;
 
   ball->vel_x *= -1;
 }
 
+long random_at_most(long max) {
+  unsigned long
+      // max <= RAND_MAX < ULONG_MAX, so this is okay.
+      num_bins = (unsigned long)max + 1,
+      num_rand = (unsigned long)RAND_MAX + 1, bin_size = num_rand / num_bins,
+      defect = num_rand % num_bins;
+
+  long x;
+  do {
+    x = random();
+  }
+  // This is carefully written not to overflow
+  while (num_rand - defect <= (unsigned long)x);
+
+  // Truncated division is intentional
+  return x / bin_size;
+}
+
+double clamp(double d, double min, double max) {
+  const double t = d < min ? min : d;
+  return t > max ? max : t;
+}
+
 void game_tick(game_t* game) {
-  // Update positions
+  // Update paddle positions
+  game->left.pos_y += dt * game->left.vel_y;
+  game->left.pos_y = clamp(game->left.pos_y, 0, game->height);
+  game->right.pos_y += dt * game->right.vel_y;
+  game->right.pos_y = clamp(game->right.pos_y, 0, game->height);
+
+  // Update paddle angle
+  game->left.angle += 1;
+  game->right.angle -= 3;
+
+  // Update ball position
   game->ball.pos_x += dt * game->ball.vel_x;
   game->ball.pos_y += dt * game->ball.vel_y;
 
@@ -70,47 +122,51 @@ void game_tick(game_t* game) {
   }
 }
 
-game_t* game_init(double height, double width) {
+game_t* game_init() {
+  game_t* game = malloc(sizeof(game_t));
+  assert(game);
+
+  return game;
+}
+
+void tiltpong_game_reset() {
   int offset = width * 0.1;
   paddle_t left = {
       .side = PADDLE_LEFT,
       .pos_x = offset,
       .pos_y = height / 2,
       .score = 0,
-      .vel_y = 0,
+      .vel_y = -1,
       .angle = 90,
-      .w = 5,
-      .h = 25,
+      .w = 6,
+      .h = 36,
   };
 
   paddle_t right = {
       .side = PADDLE_RIGHT,
       .pos_x = width - offset,
-      .pos_y = height / 2,
+      .pos_y = 2 * (height / 3) + 10,
       .score = 0,
       .vel_y = 0,
       .angle = 90,
-      .w = 5,
-      .h = 25,
+      .w = 6,
+      .h = 36,
   };
 
   ball_t ball = {
       .pos_x = width / 2,
       .pos_y = height / 2,
-      .vel_x = 1,
-      .vel_y = 0,
-      .radius = 5,
+      .vel_x = 3,
+      .vel_y = 2,
+      .radius = 10,
   };
 
-  game_t* game = malloc(sizeof(game_t));
   assert(game);
   game->left = left;
   game->right = right;
   game->ball = ball;
   game->width = width;
   game->height = height;
-
-  return game;
 }
 
 void game_debug_print(game_t* game) {
@@ -121,46 +177,51 @@ void game_debug_print(game_t* game) {
       game->right.pos_y);
 }
 
-typedef struct {
-  char* buf;
-  size_t buflen;
-} game_buffer_t;
+void serialize(game_t* game) {
+  assert(game);
+  assert(GAME_BUFFER);
+  assert(GAME_BUFFER->buf);
 
-game_buffer_t game_create_serialization(game_t* game) {
-  game_buffer_t buf;
-  buf.buf = malloc(1024);
-  assert(buf.buf);
-
-  snprintf(buf.buf, 1024,
+  snprintf(GAME_BUFFER->buf, MAX_GAME_BUFFER_SIZE,
            "{"
            "\"width\":%d,"
            "\"height\":%d,"
-           "\"ball\":{\"x\":%d,\"y\":%d},"
-           "\"left\":{\"score\":%d,\"x\":%d,\"angle\":%.3f,\"y\":%d},"
-           "\"right\":{\"score\":%d,\"x\":%d,\"angle\":%.3f,\"y\":%d}"
+           "\"ball\":{\"x\":%d,\"y\":%d,\"radius\":%d},"
+           "\"left\":{\"score\":%d,\"x\":%d,\"angle\":%.3f,\"y\":%d,"
+           "\"width\":%d,\"height\":%d},"
+           "\"right\":{\"score\":%d,\"x\":%d,\"angle\":%.3f,\"y\":%d,"
+           "\"width\":%d,\"height\":%d}"
            "}",
            game->width, game->height, (int)game->ball.pos_x,
-           (int)game->ball.pos_y, game->left.score, (int)game->left.pos_x,
-           game->left.angle, (int)game->left.pos_y, game->right.score,
-           (int)game->right.pos_x, game->right.angle, (int)game->right.pos_y);
-  buf.buflen = strlen(buf.buf);
-
-  // printf("GAME:\n");
-  // printf("%s\n", buf.buf);
-
-  return buf;
+           (int)game->ball.pos_y, (int)game->ball.radius, game->left.score,
+           (int)game->left.pos_x, game->left.angle, (int)game->left.pos_y,
+           (int)game->left.w, (int)game->left.h, game->right.score,
+           (int)game->right.pos_x, game->right.angle, (int)game->right.pos_y,
+           (int)game->right.w, (int)game->right.h);
+  GAME_BUFFER->buflen = strlen(GAME_BUFFER->buf);
 }
 
-void game_free_serialization(game_buffer_t* buf) { free(buf->buf); }
+void free_serialization() {
+  free(GAME_BUFFER->buf);
+  free(GAME_BUFFER);
+}
 
 int tiltpong_game_start(void) {
-  game_t* g = game_init(400, 400);
+  GAME_BUFFER = malloc(sizeof(game_buffer_t));
+  assert(GAME_BUFFER);
+  GAME_BUFFER->buf = malloc(MAX_GAME_BUFFER_SIZE);
+  assert(GAME_BUFFER->buf);
+  GAME_BUFFER->buflen = 0;
 
+  game = game_init();
+  tiltpong_game_reset();
   while (true) {
-    game_tick(g);
-    game_create_serialization(g);
+    game_tick(game);
+    serialize(game);
     msleep(10);
   }
+
+  free_serialization();
 
   printf("GAME: Exiting!\n");
 
