@@ -1,5 +1,5 @@
 CC = clang
-FLAGS = -Wall -Wpedantic -I../third_party/libcoap/include -I../third_party/libwebsockets/include -I/usr/local/include -I/usr/local/Cellar/gnutls/3.8.4
+FLAGS = -Wall -O3 -Wpedantic -I../third_party/libcoap/include -I../third_party/libwebsockets/include -I/usr/local/include -I/usr/local/Cellar/gnutls/3.8.4
 
 LIBS = -L../third_party/libcoap/.libs -lgnutls -lcoap-3-gnutls -L../third_party/libwebsockets/build/lib -lwebsockets
 

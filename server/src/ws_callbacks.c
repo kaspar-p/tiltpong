@@ -16,6 +16,7 @@
 #include <libwebsockets.h>
 #include <string.h>
 
+#include "game.h"
 #include "utils.h"
 #include "websocket.h"
 
@@ -232,10 +233,8 @@ int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
         return 0;
       }
 
-      char *buf = "\"{\"paddles\": 2}\"";
-
       struct msg response;
-      response.len = strlen(buf);
+      response.len = GAME_BUFFER->buflen;
       response.payload = malloc(LWS_PRE + response.len);
       memset((char *)response.payload + LWS_PRE, 0, response.len);
       if (!response.payload) {
@@ -243,14 +242,12 @@ int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
         break;
       }
 
-      strcpy(response.payload, buf);
+      strcpy(response.payload, GAME_BUFFER->buf);
       response.first = 1;
       response.final = 1;
-      printf("sending back %zu bytes!\n", response.len);
 
       // Send data to client
       int flags = lws_write_ws_flags(LWS_WRITE_TEXT, true, true);
-      lwsl_info("sending data\n");
 
       lws_write(wsi, response.payload, response.len, flags);
 
@@ -263,8 +260,6 @@ int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
       }
 
       free(response.payload);
-
-      lwsl_user(" wrote %d: flags: 0x%x\n", status, flags);
 
       // Schedule ourselves again in 10ms
       msleep(10);
