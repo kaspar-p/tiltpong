@@ -1,7 +1,7 @@
 #include <coap3/coap.h>
 
-coap_context_t* coap_init(void);
+coap_context_t *tiltpong_coap_init(void);
 
-void coap_free_(coap_context_t *ctx);
+void tiltpong_coap_free(coap_context_t *ctx);
 
-void coap_listen(coap_context_t *ctx);
+int tiltpong_coap_listen(coap_context_t *ctx);

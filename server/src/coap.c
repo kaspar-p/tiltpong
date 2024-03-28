@@ -13,7 +13,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-extern int interrupted;
 extern char *interface;
 
 int resolve_address(const char *host, const char *service,
@@ -36,12 +35,12 @@ int resolve_address(const char *host, const char *service,
 
   for (ainfo = res; ainfo != NULL; ainfo = ainfo->ai_next) {
     switch (ainfo->ai_family) {
-    case AF_INET6:
-    case AF_INET:
-      len = dst->size = ainfo->ai_addrlen;
-      memcpy(&dst->addr.sin6, ainfo->ai_addr, dst->size);
-      goto finish;
-    default:;
+      case AF_INET6:
+      case AF_INET:
+        len = dst->size = ainfo->ai_addrlen;
+        memcpy(&dst->addr.sin6, ainfo->ai_addr, dst->size);
+        goto finish;
+      default:;
     }
   }
 
@@ -50,12 +49,6 @@ finish:
   return len;
 }
 
-/**
- * @brief The handler for /update
- *
- * Type definitions from
- * https://libcoap.net/doc/reference/4.3.4/coap__resource_8h_source.html
- */
 void handler_hello_world(coap_resource_t *resource, coap_session_t *session,
                          const coap_pdu_t *request, const coap_string_t *query,
                          coap_pdu_t *response) {
@@ -83,12 +76,12 @@ void handler_ready(coap_resource_t *resource, coap_session_t *session,
   coap_show_pdu(COAP_LOG_WARN, response);
 }
 
-void coap_free_(coap_context_t *ctx) {
+void tiltpong_coap_free(coap_context_t *ctx) {
   coap_free_context(ctx);
   coap_cleanup();
 }
 
-coap_context_t *coap_init(void) {
+coap_context_t *tiltpong_coap_init(void) {
   coap_address_t dst;
 
   coap_startup();
@@ -134,8 +127,11 @@ coap_context_t *coap_init(void) {
   return ctx;
 }
 
-void coap_listen(coap_context_t *ctx) {
-  while (!interrupted) {
+int tiltpong_coap_listen(coap_context_t *ctx) {
+  while (true) {
     coap_io_process(ctx, COAP_IO_WAIT);
   }
+
+  printf("COAP: Exiting!\n");
+  return 1;
 }

@@ -40,6 +40,6 @@ typedef struct {
   ball_t ball;
 } game_t;
 
-int game_start(void);
+int tiltpong_game_start(void);
 
 #endif

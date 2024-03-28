@@ -12,9 +12,11 @@
 
 #define LWS_DLL
 #define LWS_INTERNAL
+
 #include <libwebsockets.h>
 #include <string.h>
 
+#include "utils.h"
 #include "websocket.h"
 
 #define RING_DEPTH 4096
@@ -264,7 +266,8 @@ int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
 
       lwsl_user(" wrote %d: flags: 0x%x\n", status, flags);
 
-      // Schedule ourselves again
+      // Schedule ourselves again in 10ms
+      msleep(10);
       lws_callback_on_writable(wsi);
       break;
     }

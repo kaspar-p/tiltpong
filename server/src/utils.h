@@ -1,7 +1,8 @@
 #ifndef _TILTPONG_H_
 #define _TILTPONG_H_
 
-int interrupted = 0;
-char * interface = "wlan0";
+char* interface = "wlan0";
+
+int msleep(long msec);
 
 #endif

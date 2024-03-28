@@ -1,4 +1,2 @@
 *.o
-server/src/main
-server/src/websocket
-server/src/game
+server/src/tiltpongsrv

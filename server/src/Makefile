@@ -3,12 +3,12 @@ FLAGS = -Wall -Wpedantic -I../third_party/libcoap/include -I../third_party/libwe
 
 LIBS = -L../third_party/libcoap/.libs -lgnutls -lcoap-3-gnutls -L../third_party/libwebsockets/build/lib -lwebsockets
 
-all: main
+all: tiltpongsrv
 
 clean:
 	rm -rf main game websocket *.o
 
-main: main.o coap.o game.o websocket.o ws_callbacks.o
+tiltpongsrv: main.o coap.o game.o websocket.o ws_callbacks.o utils.o
 	${CC} -o $@ $^ ${FLAGS} ${LIBS}
 
 main.o: main.c
@@ -18,6 +18,9 @@ websocket.o: websocket.c
 	${CC} ${FLAGS} -c $^
 
 ws_callbacks.o: ws_callbacks.c
+	${CC} ${FLAGS} -c $^
+
+utils.o: utils.c
 	${CC} ${FLAGS} -c $^
 
 game.o: game.c

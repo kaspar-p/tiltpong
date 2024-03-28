@@ -10,9 +10,10 @@
 #include <time.h>
 #include <unistd.h>
 
-extern int interrupted;
+#include "utils.h"
+
 double dt = 0.5;
-game_t *game;
+game_t* game;
 
 void game_score(game_t* game, side_e side) {
   if (side == PADDLE_LEFT) {
@@ -120,25 +121,6 @@ void game_debug_print(game_t* game) {
       game->right.pos_y);
 }
 
-int msleep(long msec) {
-  struct timespec ts;
-  int res;
-
-  if (msec < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  ts.tv_sec = msec / 1000;
-  ts.tv_nsec = (msec % 1000) * 1000000;
-
-  do {
-    res = nanosleep(&ts, &ts);
-  } while (res && errno == EINTR);
-
-  return res;
-}
-
 typedef struct {
   char* buf;
   size_t buflen;
@@ -163,22 +145,24 @@ game_buffer_t game_create_serialization(game_t* game) {
            (int)game->right.pos_x, game->right.angle, (int)game->right.pos_y);
   buf.buflen = strlen(buf.buf);
 
-  printf("GAME:\n");
-  printf("%s\n", buf.buf);
+  // printf("GAME:\n");
+  // printf("%s\n", buf.buf);
 
   return buf;
 }
 
 void game_free_serialization(game_buffer_t* buf) { free(buf->buf); }
 
-int game_start(void) {
+int tiltpong_game_start(void) {
   game_t* g = game_init(400, 400);
 
-  while (!interrupted) {
+  while (true) {
     game_tick(g);
     game_create_serialization(g);
     msleep(10);
   }
+
+  printf("GAME: Exiting!\n");
 
   return 0;
 }
