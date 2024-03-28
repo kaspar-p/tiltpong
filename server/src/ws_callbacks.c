@@ -260,6 +260,8 @@ int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
       }
 
       free(response.payload);
+      response.payload = NULL;
+      response.len = 0;
 
       // Schedule ourselves again in 10ms
       msleep(10);
