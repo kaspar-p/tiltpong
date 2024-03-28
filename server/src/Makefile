@@ -8,8 +8,8 @@ all: main
 clean:
 	rm -rf main game websocket *.o
 
-main: main.o websocket.o ws_callbacks.o game.o
-	${CC} -o $@ $^ ${FLAGS} ${LIBS} 
+main: main.o coap.o game.o websocket.o ws_callbacks.o
+	${CC} -o $@ $^ ${FLAGS} ${LIBS}
 
 main.o: main.c
 	${CC} ${FLAGS} -c $^
