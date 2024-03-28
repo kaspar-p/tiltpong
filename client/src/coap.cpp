@@ -66,7 +66,7 @@ void coap_init() {
 
   if (!network) {
     printf("Cannot connect to the network, see serial output\n");
-    return 1;
+    return;
   }
 
   network->set_as_default();
