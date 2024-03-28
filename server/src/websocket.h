@@ -34,6 +34,6 @@ int callback_send_game_data(struct lws *wsi, enum lws_callback_reasons reason,
         sizeof(struct per_session_data__minimal_server_echo), 1024, 0, NULL, 0 \
   }
 
-int websocket_start();
+int websocket_start(void);
 
 #endif

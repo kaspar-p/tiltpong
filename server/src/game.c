@@ -10,9 +10,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "tiltpong.h"
-
+extern int interrupted;
 double dt = 0.5;
+game_t *game;
 
 void game_score(game_t* game, side_e side) {
   if (side == PADDLE_LEFT) {
@@ -171,7 +171,7 @@ game_buffer_t game_create_serialization(game_t* game) {
 
 void game_free_serialization(game_buffer_t* buf) { free(buf->buf); }
 
-int game_start() {
+int game_start(void) {
   game_t* g = game_init(400, 400);
 
   while (!interrupted) {

@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+extern int interrupted;
+
 int resolve_address(const char *host, const char *service,
                     coap_address_t *dst) {
   struct addrinfo *res, *ainfo;
@@ -57,14 +59,13 @@ void handler_update(coap_resource_t *resource, coap_session_t *session,
   coap_show_pdu(COAP_LOG_WARN, response);
 }
 
-void coap_free(coap_context_t *ctx) {
+void coap_free_(coap_context_t *ctx) {
   coap_free_context(ctx);
   coap_cleanup();
 }
 
-coap_context_t *coap_init() {
+coap_context_t *coap_init(void) {
   coap_address_t dst;
-  int result = EXIT_FAILURE;
 
   coap_startup();
 
@@ -92,7 +93,7 @@ coap_context_t *coap_init() {
 }
 
 void coap_listen(coap_context_t *ctx) {
-  while (true) {
+  while (!interrupted) {
     coap_io_process(ctx, COAP_IO_WAIT);
   }
 }

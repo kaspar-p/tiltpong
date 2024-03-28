@@ -13,10 +13,9 @@
 #include "websocket.h"
 
 #include <libwebsockets.h>
-#include <signal.h>
 #include <string.h>
 
-#include "tiltpong.h"
+extern int interrupted;
 
 static struct lws_protocols protocols[] = {
     LWS_PLUGIN_PROTOCOL_MINIMAL_SERVER_ECHO, LWS_PROTOCOL_SEND_GAME_DATA,
@@ -43,7 +42,7 @@ static const struct lws_protocol_vhost_options pvo = {
     ""                         /* ignored */
 };
 
-int websocket_start() {
+int websocket_start(void) {
   struct lws_context_creation_info info;
   struct lws_context *context;
   int n = 0, logs = LLL_USER | LLL_ERR | LLL_WARN | LLL_NOTICE

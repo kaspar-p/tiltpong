@@ -22,3 +22,6 @@ ws_callbacks.o: ws_callbacks.c
 
 game.o: game.c
 	${CC} ${FLAGS} -c $^
+
+coap.o: coap.c
+	${CC} ${FLAGS} -c $^

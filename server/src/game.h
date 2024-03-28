@@ -40,8 +40,6 @@ typedef struct {
   ball_t ball;
 } game_t;
 
-game_t *game;
-
-int game_start();
+int game_start(void);
 
 #endif

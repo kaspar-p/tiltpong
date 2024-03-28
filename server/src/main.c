@@ -1,11 +1,15 @@
 #include <assert.h>
 #include <coap3/coap.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 
+#include "coap.h"
 #include "game.h"
 #include "tiltpong.h"
 #include "websocket.h"
+
+extern int interrupted;
 
 void *start_thread_ws(void *arg) {
   printf("Starting websocket server! %d\n", ((int *)arg)[0]);
@@ -18,13 +22,17 @@ void *start_thread_ws(void *arg) {
 void *start_thread_game(void *arg) {
   printf("Starting game! %d\n", ((int *)arg)[0]);
 
-  game_start();  // never exits
+  game_start(); // never exits
 
   return "done";
 }
 
 void *start_thread_coap(void *arg) {
   printf("Starting coap server! %d\n", ((int *)arg)[0]);
+
+  coap_context_t *ctx = coap_init();
+  coap_listen(ctx);
+
   return "done";
 }
 
@@ -45,7 +53,7 @@ pthread_t *thread_create(void *(entry)(void *)) {
   return thread;
 }
 
-int main() {
+int main(void) {
   int status = 0;
 
   signal(SIGINT, sigint_handler);
