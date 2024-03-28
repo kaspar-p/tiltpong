@@ -60,8 +60,7 @@ double get_tilt()
 // assume device starts at position (0,0,0) and is not moving
 double old_acceleration = 0;
 double old_velocity = 0;
-double old_position = 0;
-double max_diff = 0; 
+double max_diff = 0;
 /**
  * Compute the velocity of the device by integrating acceleration.
  * Several assumptions are made to improve usability
@@ -80,10 +79,8 @@ double get_new_position()
   double true_g = xyz_counts[2];
   double approx_g = cos(angle) * 1000;
   max_diff = (true_g - approx_g >= max_diff || approx_g - true_g >= max_diff) ? true_g - approx_g : max_diff;
-  double new_acceleration = true_g - approx_g; // remove gravity from calculation
-
-  double new_velocity = 0;
-  double new_position = 0;
+  double new_acceleration = approx_g - true_g; // remove gravity from calculation
+  double new_velocity = old_velocity + (old_acceleration + new_acceleration) / 2 * delta_t;
 
   // close enough to not moving that we set it to 0
   // compute new velocity
@@ -91,39 +88,36 @@ double get_new_position()
   // might have to mess with these boundaries
 
   // accel dead zone
-  if (-10 <= new_acceleration && new_acceleration <= 10)
+  if (-2 <= new_acceleration && new_acceleration <= 2)
   {
     new_acceleration = 0;
     old_acceleration = 0;
     old_velocity = 0;
-    new_position = old_position;
+    new_velocity = 0;
   }
-  else
+  // velocity dead zone
+  if (-3 <= new_velocity && new_velocity <= 3)
   {
-    new_velocity = old_velocity + (old_acceleration + new_acceleration) / 2 * delta_t;
-    // velocity dead zone
-    if (-6 <= new_velocity && new_velocity <= 6)
-    {
-      new_velocity = 0;
-    }
-    new_position = old_position + (old_velocity + new_velocity) / 2 * delta_t;
+    new_velocity = 0;
+    old_velocity = 0; 
   }
 
   old_acceleration = new_acceleration;
   old_velocity = new_velocity;
-  old_position = new_position;
 
   // + is up - is down
   char direction = (new_velocity >= 0) ? '-' : '+';
   direction = (new_velocity == 0) ? 'X' : direction;
 
-  printf("[TRUE_G] %.2f ", true_g);
-  printf("[APPROX_G] %.2f ", approx_g);
-  printf("[DIFF] %.2f ", xyz_counts[2] - approx_g);
-  printf("[MAX_DIFF] %.2f ", max_diff);
-  printf("[ACCELERATION] %.2f ", new_acceleration);
-  printf("[VELOCITY] %.2f ", new_velocity);
-  printf("[DIRECTION] %c\n", direction);
-
+  if (new_velocity != 0)
+  {
+    printf("[TRUE_G] %.2f ", true_g);
+    printf("[APPROX_G] %.2f ", approx_g);
+    printf("[DIFF] %.2f ", xyz_counts[2] - approx_g);
+    printf("[ANGLE] %.2f ", angle * (180 / 3.14159));
+    printf("[ACCELERATION] %.2f ", new_acceleration);
+    printf("[VELOCITY] %.2f ", new_velocity);
+    printf("[DIRECTION] %c\n", direction);
+  }
   return new_velocity;
 }
