@@ -13,6 +13,46 @@
 
 #include "utils.h"
 
+typedef enum {
+  PADDLE_LEFT = 0,
+  PADDLE_RIGHT = 1,
+} side_e;
+
+typedef struct {
+  side_e side;
+  int score;
+
+  double w;
+  double h;
+
+  // center-rectangle
+  double pos_x;
+  double pos_y;
+
+  paddle_pos_t* pos;
+} paddle_t;
+
+typedef struct {
+  double pos_x;
+  double vel_x;
+
+  double pos_y;
+  double vel_y;
+
+  double radius;
+} ball_t;
+
+typedef struct {
+  int width, height;
+
+  paddle_t left;
+  paddle_t right;
+  ball_t ball;
+} game_t;
+
+paddle_pos_t* left_pos = NULL;
+paddle_pos_t* right_pos = NULL;
+
 double width = 400, height = 400;
 
 double dt = 0.5;
@@ -89,14 +129,10 @@ double clamp(double d, double min, double max) {
 
 void game_tick(game_t* game) {
   // Update paddle positions
-  game->left.pos_y += dt * game->left.vel_y;
+  game->left.pos_y += dt * game->left.pos->vel_y;
   game->left.pos_y = clamp(game->left.pos_y, 0, game->height);
-  game->right.pos_y += dt * game->right.vel_y;
+  game->right.pos_y += dt * game->right.pos->vel_y;
   game->right.pos_y = clamp(game->right.pos_y, 0, game->height);
-
-  // Update paddle angle
-  game->left.angle += 1;
-  game->right.angle -= 3;
 
   // Update ball position
   game->ball.pos_x += dt * game->ball.vel_x;
@@ -126,18 +162,26 @@ game_t* game_init() {
   game_t* game = malloc(sizeof(game_t));
   assert(game);
 
+  left_pos = malloc(sizeof(paddle_pos_t));
+  right_pos = malloc(sizeof(paddle_pos_t));
+
   return game;
 }
 
 void tiltpong_game_reset() {
+  left_pos->angle = 0;
+  left_pos->vel_y = 0;
+
+  right_pos->angle = 0;
+  right_pos->vel_y = 0;
+
   int offset = width * 0.1;
   paddle_t left = {
       .side = PADDLE_LEFT,
       .pos_x = offset,
       .pos_y = height / 2,
       .score = 0,
-      .vel_y = -1,
-      .angle = 90,
+      .pos = left_pos,
       .w = 6,
       .h = 36,
   };
@@ -147,8 +191,7 @@ void tiltpong_game_reset() {
       .pos_x = width - offset,
       .pos_y = 2 * (height / 3) + 10,
       .score = 0,
-      .vel_y = 0,
-      .angle = 90,
+      .pos = right_pos,
       .w = 6,
       .h = 36,
   };
@@ -194,10 +237,10 @@ void serialize(game_t* game) {
            "}",
            game->width, game->height, (int)game->ball.pos_x,
            (int)game->ball.pos_y, (int)game->ball.radius, game->left.score,
-           (int)game->left.pos_x, game->left.angle, (int)game->left.pos_y,
+           (int)game->left.pos_x, game->left.pos->angle, (int)game->left.pos_y,
            (int)game->left.w, (int)game->left.h, game->right.score,
-           (int)game->right.pos_x, game->right.angle, (int)game->right.pos_y,
-           (int)game->right.w, (int)game->right.h);
+           (int)game->right.pos_x, game->right.pos->angle,
+           (int)game->right.pos_y, (int)game->right.w, (int)game->right.h);
   GAME_BUFFER->buflen = strlen(GAME_BUFFER->buf);
 }
 
