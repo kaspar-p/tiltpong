@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-extern char *interface;
+char *interface = "wlan0";
 
 int resolve_address(const char *host, const char *service,
                     coap_address_t *dst) {
