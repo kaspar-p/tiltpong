@@ -40,7 +40,7 @@ function drawPaddle(p5: P5, paddle: Paddle) {
 
   p5.translate(paddle.x, paddle.y);
   p5.angleMode("degrees");
-  p5.rotate(paddle.angle + 90);
+  p5.rotate(paddle.angle);
 
   p5.noStroke();
   p5.fill("white");

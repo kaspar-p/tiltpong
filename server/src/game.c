@@ -50,15 +50,15 @@ typedef struct {
   ball_t ball;
 } game_t;
 
-paddle_pos_t* left_pos = NULL;
-paddle_pos_t* right_pos = NULL;
-
 double width = 400, height = 400;
 
 double dt = 0.5;
 
-game_t* game;
+game_t* game = NULL;
 game_buffer_t* GAME_BUFFER = NULL;
+
+paddle_pos_t* left_pos = NULL;
+paddle_pos_t* right_pos = NULL;
 
 void game_score(game_t* game, side_e scoring_side) {
   if (scoring_side == PADDLE_LEFT) {
@@ -163,7 +163,12 @@ game_t* game_init() {
   assert(game);
 
   left_pos = malloc(sizeof(paddle_pos_t));
+  assert(left_pos);
+
   right_pos = malloc(sizeof(paddle_pos_t));
+  assert(right_pos);
+
+  printf("GAME: init\n");
 
   return game;
 }
