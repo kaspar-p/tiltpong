@@ -10,8 +10,7 @@ SocketAddress *sock_addr;
 const char *SERVER_IP = "10.0.0.111";
 
 extern "C" void mbed_mac_address(char *s);
-uint64_t uid = 0;
-char mac[6];
+uint8_t uid = 1;
 
 void *coap_malloc(uint16_t size) { return malloc(size); }
 
@@ -27,61 +26,40 @@ int8_t coap_rx_cb(sn_coap_hdr_s *a, sn_nsdl_addr_s *b, void *c) {
     return 0;
 }
 
-void recvfromMain() {
-  SocketAddress addr;
-  uint8_t *recv_buffer = (uint8_t *)malloc(
-      1280); // Suggested is to keep packet size under 1280 bytes
+void coap_ready() {
+  const char *coap_uri_path = "ready";
+  auto payload = "{\"uid\":" + std::to_string(uid) + "}";
+  const char *payload_cstr = payload.c_str();
 
-  nsapi_size_or_error_t ret;
+  sn_coap_hdr_s *coap_res_ptr = (sn_coap_hdr_s *)calloc(sizeof(sn_coap_hdr_s), 1);
+  coap_res_ptr->token_len = 0;
+  // coap_res_ptr->coap_status = COAP_STATUS_OK;
+  coap_res_ptr->msg_code = COAP_MSG_CODE_REQUEST_POST;
+  coap_res_ptr->msg_type = COAP_MSG_TYPE_CONFIRMABLE;
+  coap_res_ptr->content_format = COAP_CT_TEXT_PLAIN;
+  coap_res_ptr->msg_id = 300;
+  coap_res_ptr->uri_path_len = strlen(coap_uri_path);
+  coap_res_ptr->payload_len = strlen(payload_cstr);
+  coap_res_ptr->token_ptr = NULL;
+  coap_res_ptr->uri_path_ptr = (uint8_t *)coap_uri_path;
+  coap_res_ptr->payload_ptr = (uint8_t *)payload_cstr;
+  coap_res_ptr->options_list_ptr = NULL;
 
-  while ((ret = socket.recvfrom(&addr, recv_buffer, 1280)) >= 0) {
-    // to see where the message came from, inspect addr.get_addr() and
-    // addr.get_port()
+  uint16_t message_len = sn_coap_builder_calc_needed_packet_data_size(coap_res_ptr);
+  uint8_t *message_ptr = (uint8_t *)malloc(message_len);
 
-    printf("Received a message of length '%d'\n", ret);
+  sn_coap_builder(message_ptr, coap_res_ptr);
 
-    sn_coap_hdr_s *parsed =
-        sn_coap_parser(coapHandle, ret, recv_buffer, &coapVersion);
+  socket.send(message_ptr, message_len);
 
-    // We know the payload is going to be a string
-    std::string payload((const char *)parsed->payload_ptr, parsed->payload_len);
-
-    printf("\tmsg_id:           %d\n", parsed->msg_id);
-    printf("\tmsg_code:         %d\n", parsed->msg_code);
-    printf("\tcontent_format:   %d\n", parsed->content_format);
-    printf("\tpayload_len:      %d\n", parsed->payload_len);
-    printf("\tpayload:          %s\n", payload.c_str());
-    printf("\toptions_list_ptr: %p\n", parsed->options_list_ptr);
-  }
-
-  free(recv_buffer);
-
-  printf("UDPSocket::recvfrom failed, error code %d. Shutting down receive thread.\n", ret);
+  free(coap_res_ptr);
+  free(message_ptr);
 }
 
-const char *sec2str(nsapi_security_t sec) {
-    switch (sec) {
-        case NSAPI_SECURITY_NONE:
-            return "None";
-        case NSAPI_SECURITY_WEP:
-            return "WEP";
-        case NSAPI_SECURITY_WPA:
-            return "WPA";
-        case NSAPI_SECURITY_WPA2:
-            return "WPA2";
-        case NSAPI_SECURITY_WPA_WPA2:
-            return "WPA/WPA2";
-        case NSAPI_SECURITY_UNKNOWN:
-        default:
-            return "Unknown";
-    }
-}
+void coap_init() {
+  printf("UID: %d\n", uid);
 
-int coap_init() {
-  mbed_mac_address(mac);
-  uid = mac[0] << 20 << 20 | mac[1] << 16 << 16 | mac[2] << 24 | mac[3] << 16 | mac[4] << 8 | mac[5] << 0;
-  printf("UID: %lld\n", uid);
-  
+  // Setup network
   printf("Initializing network interface... ");
   ISM43362Interface * network = new ISM43362Interface(PC_12, PC_11, PC_10, PE_0, PE_8, PE_1, PB_13);
   printf("Done\n");
@@ -102,35 +80,29 @@ int coap_init() {
 
   printf("Opening socket... ");
   socket.open(network);
-  socket.set_blocking(true);
+  socket.set_blocking(true); // TODO test setting this to false with game performance
   printf("Done\n");
 
-  /* TCP request
-  SocketAddress addr(SERVER_IP, 8080);
-  std::string request = "GET / HTTP/1.1\r\nHost: 192.168.223.29:8080\r\nConnection: close\r\n\r\n";
-  TCPSocket socket;
-  socket.open(network);
-  socket.connect(addr);
-  socket.send(request.c_str(), request.length());
-  printf("request sent\n");
-  */
-
+  // Setup CoAP
   coapHandle = sn_coap_protocol_init(&coap_malloc, &coap_free, &coap_tx_cb, &coap_rx_cb);
 
-  const char *coap_uri_path = "update";
+  // Setup CoAP init packet
+  const char *coap_uri_path = "init";
+  auto payload = "{\"uid\":" + std::to_string(uid) + "}";
+  const char *payload_cstr = payload.c_str();
 
   sn_coap_hdr_s *coap_res_ptr = (sn_coap_hdr_s *)calloc(sizeof(sn_coap_hdr_s), 1);
   coap_res_ptr->token_len = 0;
   // coap_res_ptr->coap_status = COAP_STATUS_OK;
-  coap_res_ptr->msg_code = COAP_MSG_CODE_REQUEST_GET;
-  coap_res_ptr->msg_type = COAP_MSG_TYPE_CONFIRMABLE; // Can probably be non confirmable
+  coap_res_ptr->msg_code = COAP_MSG_CODE_REQUEST_POST;
+  coap_res_ptr->msg_type = COAP_MSG_TYPE_CONFIRMABLE;
   coap_res_ptr->content_format = COAP_CT_TEXT_PLAIN;
   coap_res_ptr->msg_id = 300;
   coap_res_ptr->uri_path_len = strlen(coap_uri_path);
-  coap_res_ptr->payload_len = 0;
+  coap_res_ptr->payload_len = strlen(payload_cstr);
   coap_res_ptr->token_ptr = NULL;
   coap_res_ptr->uri_path_ptr = (uint8_t *)coap_uri_path;
-  coap_res_ptr->payload_ptr = NULL;
+  coap_res_ptr->payload_ptr = (uint8_t *)payload_cstr;
   coap_res_ptr->options_list_ptr = NULL;
 
   uint16_t message_len = sn_coap_builder_calc_needed_packet_data_size(coap_res_ptr);
@@ -143,42 +115,43 @@ int coap_init() {
 
   printf("Sending message... ");
 
-  int scount = socket.send(message_ptr, message_len);
+  socket.send(message_ptr, message_len);
   printf("Done\n");
-  printf("Sent %d bytes to %s:5683\n\n", scount, SERVER_IP);
 
   free(coap_res_ptr);
   free(message_ptr);
-
-  return 0;
 }
 
-void coap_send(std::array<double, 3> position) {
-  std::string buffer;
-  for (int i = 0; i < 3; i++) {
-    buffer.append(std::to_string(position[i]));
-    if (i != 2) buffer.append(",");
-  }
-  const char *buffer_cstr = buffer.c_str();
-  const char *coap_uri_path = "/update";
+void coap_send(double velocity, double tilt) {
+  const char *coap_uri_path = "update";
+  auto payload =
+    "{\"uid\":" + std::to_string(uid)
+    + ",\"moving_up\":" + (velocity > 0 ? "true" : "false")
+    + ",\"velocity\":" + std::to_string(std::abs(velocity))
+    + ",\"tilt\":" + std::to_string(tilt)
+    + "}";
+  const char *payload_cstr = payload.c_str();
 
   sn_coap_hdr_s *coap_res_ptr = (sn_coap_hdr_s *)calloc(sizeof(sn_coap_hdr_s), 1);
-  coap_res_ptr->uri_path_ptr = (uint8_t *)coap_uri_path;
-  coap_res_ptr->uri_path_len = strlen(coap_uri_path);
-  coap_res_ptr->msg_code = COAP_MSG_CODE_REQUEST_GET;
+  coap_res_ptr->token_len = 0;
+  // coap_res_ptr->coap_status = COAP_STATUS_OK;
+  coap_res_ptr->msg_code = COAP_MSG_CODE_REQUEST_POST;
+  coap_res_ptr->msg_type = COAP_MSG_TYPE_CONFIRMABLE;
   coap_res_ptr->content_format = COAP_CT_TEXT_PLAIN;
-  coap_res_ptr->payload_len = strlen(buffer_cstr);
-  coap_res_ptr->payload_ptr = (uint8_t*)buffer_cstr;
-  coap_res_ptr->options_list_ptr = nullptr;
-  coap_res_ptr->msg_id = 7;
+  coap_res_ptr->msg_id = 300;
+  coap_res_ptr->uri_path_len = strlen(coap_uri_path);
+  coap_res_ptr->payload_len = strlen(payload_cstr);
+  coap_res_ptr->token_ptr = NULL;
+  coap_res_ptr->uri_path_ptr = (uint8_t *)coap_uri_path;
+  coap_res_ptr->payload_ptr = (uint8_t *)payload_cstr;
+  coap_res_ptr->options_list_ptr = NULL;
 
   uint16_t message_len = sn_coap_builder_calc_needed_packet_data_size(coap_res_ptr);
   uint8_t *message_ptr = (uint8_t *)malloc(message_len);
 
   sn_coap_builder(message_ptr, coap_res_ptr);
 
-  int scount = socket.send(message_ptr, message_len);
-  printf("Sent %d bytes to %s:5683\n", scount, SERVER_IP);
+  socket.send(message_ptr, message_len);
 
   free(coap_res_ptr);
   free(message_ptr);

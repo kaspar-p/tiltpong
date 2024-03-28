@@ -68,7 +68,7 @@ double max_diff = 0;
  * - We're only computing the velocity along the z axis.
  * - The device has to be mostly held still such that gravity mostly only acts on the z axis
  */
-double get_new_position()
+double get_velocity()
 {
   double delta_t = 0.01;
 
@@ -106,18 +106,19 @@ double get_new_position()
   old_velocity = new_velocity;
 
   // + is up - is down
-  char direction = (new_velocity >= 0) ? '-' : '+';
+  char direction = (new_velocity > 0) ? '+' : '-';
   direction = (new_velocity == 0) ? 'X' : direction;
 
-  if (new_velocity != 0)
-  {
-    printf("[TRUE_G] %.2f ", true_g);
-    printf("[APPROX_G] %.2f ", approx_g);
-    printf("[DIFF] %.2f ", xyz_counts[2] - approx_g);
-    printf("[ANGLE] %.2f ", angle * (180 / 3.14159));
-    printf("[ACCELERATION] %.2f ", new_acceleration);
-    printf("[VELOCITY] %.2f ", new_velocity);
-    printf("[DIRECTION] %c\n", direction);
-  }
+  // if (new_velocity != 0)
+  // {
+  //   printf("[TRUE_G] %.2f ", true_g);
+  //   printf("[APPROX_G] %.2f ", approx_g);
+  //   printf("[DIFF] %.2f ", xyz_counts[2] - approx_g);
+  //   printf("[ANGLE] %.2f ", angle * (180 / 3.14159));
+  //   printf("[ACCELERATION] %.2f ", new_acceleration);
+  //   printf("[VELOCITY] %.2f ", new_velocity);
+  //   printf("[DIRECTION] %c\n", direction);
+  // }
+
   return new_velocity;
 }

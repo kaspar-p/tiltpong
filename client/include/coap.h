@@ -15,6 +15,8 @@ uint8_t coap_tx_cb(uint8_t *a, uint16_t b, sn_nsdl_addr_s *c, void *d);
 
 int8_t coap_rx_cb(sn_coap_hdr_s *a, sn_nsdl_addr_s *b, void *c);
 
-int coap_init();
+void coap_ready();
 
-void coap_send(std::array<double, 3> position);
+void coap_init();
+
+void coap_send(double velocity, double tilt);
