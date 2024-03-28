@@ -106,7 +106,7 @@ double get_velocity()
   old_velocity = new_velocity;
 
   // + is up - is down
-  char direction = (new_velocity > 0) ? '+' : '-';
+  char direction = (new_velocity > 0) ? '-' : '+';
   direction = (new_velocity == 0) ? 'X' : direction;
 
   // if (new_velocity != 0)

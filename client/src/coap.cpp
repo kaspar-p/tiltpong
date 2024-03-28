@@ -7,7 +7,9 @@ Thread recvfromThread;
 struct coap_s *coapHandle;
 coap_version_e coapVersion = COAP_VERSION_1;
 SocketAddress *sock_addr;
-const char *SERVER_IP = "10.0.0.111";
+const char *SERVER_IP = "192.168.223.29";
+const char *NETWORK_SSID = "Hisbaan's Pixel 6";
+const char *NETWORK_PASSWORD = "yeet1234";
 
 extern "C" void mbed_mac_address(char *s);
 uint8_t uid = 1;
@@ -73,15 +75,16 @@ void coap_init() {
   network->set_blocking(true);
 
   printf("Connecting... ");
-  network->connect("Noorani", "billykabacha", NSAPI_SECURITY_WPA2);
+  network->connect(NETWORK_SSID, NETWORK_PASSWORD, NSAPI_SECURITY_WPA2);
   printf("Done\n");
 
   // printf("ipv4: %s\n", network->get_ip_address());
 
   printf("Opening socket... ");
   socket.open(network);
-  socket.set_blocking(true); // TODO test setting this to false with game performance
   printf("Done\n");
+  
+  socket.set_blocking(false); // TODO test setting this to false with game performance
 
   // Setup CoAP
   coapHandle = sn_coap_protocol_init(&coap_malloc, &coap_free, &coap_tx_cb, &coap_rx_cb);
@@ -126,7 +129,7 @@ void coap_send(double velocity, double tilt) {
   const char *coap_uri_path = "update";
   auto payload =
     "{\"uid\":" + std::to_string(uid)
-    + ",\"moving_up\":" + (velocity > 0 ? "true" : "false")
+    + ",\"moving_up\":" + (velocity > 0 ? "false" : "true")
     + ",\"velocity\":" + std::to_string(std::abs(velocity))
     + ",\"tilt\":" + std::to_string(tilt)
     + "}";

@@ -21,7 +21,7 @@ void send_sensor_data() {
 void button_fall_handler() {
   if (button1.read() == 0 && ready_sent == false) {
       coap_ready();
-      queue.call_every(16ms, send_sensor_data);
+      queue.call_every(60ms, send_sensor_data);
       ready_sent = true;
   }
 }
@@ -35,7 +35,7 @@ int main() {
   gyro_init();
 
   queue.call_every(5ms, button_fall_handler);
-  queue.call_every(10ms, get_sensor_data);
+  queue.call_every(50ms, get_sensor_data);
   queue.dispatch_forever();
 
   // should never reach here
